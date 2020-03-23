@@ -1,5 +1,6 @@
 module helloIBox
+using Cxx
 
-greet() = print("Hello World!")
+export printHello
 
 end # module
