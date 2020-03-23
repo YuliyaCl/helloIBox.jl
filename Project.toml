@@ -1,0 +1,13 @@
+name = "helloIBox"
+uuid = "bdd358d9-f932-431d-8d95-eda75a70c573"
+authors = ["YuliyaCl <36585857+YuliyaCl@users.noreply.github.com>"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
