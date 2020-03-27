@@ -1,0 +1,18 @@
+﻿  stdafx.cpp
+  dllmain.cpp
+  Dll_test.cpp
+c:\users\vgv\documents\github\dll_test\dll_test\dll_test.cpp(8): warning C4273: 'sum_int': inconsistent dll linkage
+  c:\users\vgv\documents\github\dll_test\dll_test\dll_test.h(10): note: see previous definition of 'sum_int'
+c:\users\vgv\documents\github\dll_test\dll_test\dll_test.cpp(15): warning C4273: 'sum_float': inconsistent dll linkage
+  c:\users\vgv\documents\github\dll_test\dll_test\dll_test.h(12): note: see previous definition of 'sum_float'
+c:\users\vgv\documents\github\dll_test\dll_test\dll_test.cpp(22): warning C4273: 'sum_double': inconsistent dll linkage
+  c:\users\vgv\documents\github\dll_test\dll_test\dll_test.h(14): note: see previous definition of 'sum_double'
+c:\users\vgv\documents\github\dll_test\dll_test\dll_test.cpp(29): warning C4273: 'print_array': inconsistent dll linkage
+  c:\users\vgv\documents\github\dll_test\dll_test\dll_test.h(16): note: see previous definition of 'print_array'
+c:\users\vgv\documents\github\dll_test\dll_test\dll_test.cpp(35): warning C4273: 'add_one': inconsistent dll linkage
+  c:\users\vgv\documents\github\dll_test\dll_test\dll_test.h(18): note: see previous definition of 'add_one'
+     Creating library C:\Users\vgv\Documents\GitHub\Dll_test\x64\Release\Dll_test.lib and object C:\Users\vgv\Documents\GitHub\Dll_test\x64\Release\Dll_test.exp
+  Generating code
+  All 16 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Dll_test.vcxproj -> C:\Users\vgv\Documents\GitHub\Dll_test\x64\Release\Dll_test.dll

@@ -1,6 +1,5 @@
 module helloIBox
-using Cxx
+using Libdl
 
-export printHello
 
 end # module
