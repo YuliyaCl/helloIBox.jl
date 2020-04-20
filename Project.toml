@@ -6,7 +6,12 @@ version = "0.1.0"
 [deps]
 Cxx = "a0b5b9ef-44b7-5148-a2d1-f6db19f3c3d2"
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [compat]
 julia = "1"
