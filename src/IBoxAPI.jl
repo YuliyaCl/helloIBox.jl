@@ -6,14 +6,20 @@ function getData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
         push!(strParams,String(key)*"="*param[key]*"&")
     end
     strParams = join(strParams)
-    println("http://$baseIP:$port/apibox/getData?$strParams")
+    if !haskey(param,"to") && !haskey(param,"count") #если не было указано конца, то читаем всё
+        strParams = strParams*"all&"
+    end
+    if !haskey(param,"from")
+        strParams = strParams*"from=0&"
+    end
+    # println("http://$baseIP:$port/apibox/getData?$strParams")
     res = HTTP.request("GET", "http://$baseIP:$port/apibox/getData?$strParams")
     data = res.body
     index = param["index"]
 
     dataType = getDataType(baseIP,port,param["dataName"],param["index"]) #узнаем тип данных
     convertedData = reinterpret(dataType, base64decode(data)) |> collect
-
+    # @info convertedData
     return convertedData
 end
 
@@ -37,6 +43,32 @@ function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0
     return convertedData
 end
 
+function getCountDataInInterval(baseIP::IPv4,port::Union{String,Int64}, param::Dict)
+    if haskey(param,"index")
+        ind = param["index"]
+    else
+        ind = 0
+    end
+
+    if haskey(param,"from")
+        from = param["from"]
+    else
+        from = 0
+    end
+
+    if haskey(param,"to")
+        to = param["to"]
+    else
+        to = []
+    end
+    if haskey(param,"count")
+        count = param["count"]
+    else
+        count = []
+    end
+
+    countData = getCountDataInInterval(baseIP,port,param["dataName"],ind,from,to,count)
+end
 #определяем, сколько точек попало в заданный диапазон
 function getCountDataInInterval(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0,from=0,to=[],count=[])
     addToRequest = ""
@@ -51,10 +83,13 @@ function getCountDataInInterval(baseIP::IPv4,port::Union{String,Int64},dataName:
         end
     end
     res = HTTP.request("GET", "http://$baseIP:$port/apibox/getCountDataInInterval?dataName=$dataName&index=$index$addToRequest")
-    data = res.body
-    @info data
-    convertedData = reinterpret(Int32, base64decode(data)) |> collect
-    return convertedData
+    data = String(res.body)
+    count = parse(Int32, data)
+    if count<0 count=0 end #если данные не найдены, то возвращает 0
+
+    # @info data
+    # convertedData = reinterpret(Int32, base64decode(data)) |> collect
+    return count
 
 end
 #запрос атрибутов из бокса

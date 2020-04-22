@@ -47,7 +47,7 @@ function parse_uri(reqstr::AbstractString, srv::ServerState)
     uri = parse(HTTP.URI, reqstr)
     param = HTTP.URIs.queryparams(uri)
     args = HTTP.URIs.splitpath(uri.path)
-    if haskey(param,"res")
+    if haskey(param,"dataName")
         #разбираем имя данных типа Ecg_1 => Ecg&index=1
         if length(split(param["dataName"],"_"))>1
             param["index"] = split(param["dataName"],"_")[2]
@@ -82,20 +82,48 @@ end
 function runIBox(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
-    @info filename, filepath, datapath, param
+    # @info filename, filepath, datapath, param
+
+    IBox_path = param["IBox_path"]
+    port = param["IBox_port"]
 
     out = "Тут тип загрузился бокс"
-    IBox_path = srv.obj["IBox_path"]
 
-    args = `-config:IBTestWebApi -WebAPISrc[port=8888] -finalize -res:000`
+    args = `-config:IBTestWebApi -WebAPISrc[port=$port] -finalize -res:000`
 
     command = `$IBox_path $filepath $args`
 
     @async run(command)
     out = "Бокс запущен..."
+    srv.obj["IBox_port"] = port
+    srv.obj["IBox_path"] = IBox_path
+    srv.obj["IBox_host"] = IPv4(param["IBox_host"])
+
     res = out |> HTTP.Response |> addResponseHeader
 end
 
+#стартуем бокс на файле данных
+function killIBox(srv::ServerState, req::HTTP.Request)
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+
+    # @info filename, filepath, datapath, param
+
+    IBox_path = srv.obj["IBox_path"]
+    port = srv.obj["IBox_port"]
+    out = "Тут тип загрузился бокс"
+    args = `-close`
+    args = `-config:IBTestWebApi -WebAPISrc[port=$port] -close`
+
+    command = `$IBox_path $filepath $args`
+
+    @async run(command)
+    out = "Бокс закрыт..."
+    # srv.obj["IBox_port"] = port
+    # srv.obj["IBox_path"] = IBox_path
+    # srv.obj["IBox_host"] = IPv4(param["IBox_host"])
+
+    res = out |> HTTP.Response |> addResponseHeader
+end
 #бокс уже должен быть запущен! читаем данные из бокса по getData
 function getData(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
@@ -104,16 +132,43 @@ function getData(srv::ServerState, req::HTTP.Request)
     port = srv.obj["IBox_port"]
     localIP = srv.obj["IBox_host"]
 
+    attr = getAttr(localIP,8888,param["dataName"])
 
-    data = getData(localIP,port,param)
-
-    if !isempty(data)
-        out = collect(zip(data...))
+    #проверяем, что это ТОЧНО НЕ равномерно дискретизованый ряд
+    if (haskey(attr,"dstype") && (attr["dstype"]=="event" || attr["dstype"]=="index"))
+        dataCount = getCountDataInInterval(localIP,port,param)
+        param["count"] = string(dataCount)
+    end
+    if param["count"]!="0"
+        data = getData(localIP,port,param)
+        if !isempty(data)
+            out = base64encode(collect(zip(data...)))
+        else
+            out = "null"
+        end
     else
         out = "null"
     end
 
-    res = base64encode(out) |> HTTP.Response  |> addResponseHeader
+    res = out |> HTTP.Response  |> addResponseHeader
+end
+
+#читаем данные из бокса по getData БЕЗ определения сколько попало в интервал
+function getDataRaw(srv::ServerState, req::HTTP.Request)
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+
+    @info filename, filepath, datapath, param
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+
+    data = getData(localIP,port,param)
+    if !isempty(data)
+        out = base64encode(collect(zip(data...)))
+    else
+        out = "null"
+    end
+
+    res = out |> HTTP.Response  |> addResponseHeader
 end
 
 #бокс уже должен быть запущен! читаем данные из бокса по getData
@@ -171,9 +226,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     AllObj = Dict()
     AllObj["history"] = [] #тут храним действия над ВСЕМИ датагруппами подряд
     AllObj["state"] = 0
-    AllObj["IBox_path"] = `C:/Temp/IBox/IBoxLauncher.exe`
-    AllObj["IBox_port"] = 8888
-    AllObj["IBox_host"] = localIP
+
     srv = ServerState(dir,AllObj)
 
     # define REST endpoints to dispatch to "service" functions
@@ -182,8 +235,11 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     # note the use of `*` to capture the path segment "variables"
     # HTTP.@register(H5_ROUTER, "GET", "", handle)
     HTTP.@register(H5_ROUTER, "GET", "/api/runIBox", x->runIBox(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/killIBox", x->killIBox(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getDataTree", x->getDataTree(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getData", x->getData(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getDataRaw", x->getDataRaw(srv, x))
+
     HTTP.@register(H5_ROUTER, "GET", "/api/getDataTag", x->getDataTag(srv, x))
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))
@@ -196,7 +252,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     sleep(1) # пауза, чтобы вывод текста в консоль не перебивался потоком сервера
 
     @info "In browser:"
-    @info "$localIP:$port/api/runIBox?res=oxy115829.dat"
+    @info "$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path='C:/Temp/IBox/IBoxLauncher.exe'&IBox_host=127.0.0.1"
     @info "$localIP:$port/api/getDataTree"
     @info "$localIP:$port/api/getData?dataName=QPoint&index=0&from=0&to=10&count=100"
 

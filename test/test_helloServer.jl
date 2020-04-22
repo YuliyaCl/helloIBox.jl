@@ -2,20 +2,55 @@ using helloIBox
 using Sockets
 using HTTP
 using Base64
+using Test
+
 localIP =  Sockets.localhost
 port = 8080
+@testset "Access to data through IBox" begin
+
 start_server(""; localIP = localIP, port = port)
-r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat")
-r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Ecg_1&from=0&to=10&count=20")
-r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&to=10&count=20")
+r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=C:/Temp/IBox/IBoxLauncher.exe&IBox_host=$localIP")
+r = HTTP.request("GET", "http://$localIP:$port/api/killIBox?res=oxy115829.dat")
+#ЗАПРОС ДАННЫХ
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Freq&index=0&from=0&count=1")
+Freq = reinterpret(Int32, base64decode(r.body)) |> collect
+@test Freq[1]==257
 
-r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg")
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Ecg_1&from=0&count=20")
+ecg1 = reinterpret(Int32, base64decode(r.body)) |> collect
+@test length(ecg1)==20 && ecg1[1]==3099 && ecg1[20]==3062
+
+#данные в интервале
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300")
+QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+@test QPoint == [101, 221]
+
+#данные читаются "чистяком"
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=WidthQRS&index=0&from=0&count=30")
+WidthQRS = reinterpret(UInt16, base64decode(r.body)) |> collect
+@test length(WidthQRS) == 30 && WidthQRS[1] == 0x0017
+
+#данные "чистяком"
+r = HTTP.request("GET", "http://$localIP:$port/api/getDataRaw?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300")
+QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+@test length(QPoint) == 300 #берет оригинальные точки
+
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg&index=2")
+@test String(r.body)=="C1"
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg_2")
+@test String(r.body)=="C1"
 
+r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
+tree = JSON.parse(String(r.body))
+@test tree[1]["nodes"][1]["nodes"][1]["name"] == "Ecg"
 
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
-###
+end
+
+
+
+
+# ###
 # param = Dict()
 # param["dataName"]="Ecg"
 #
@@ -23,6 +58,7 @@ r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 # param["from"]="0"
 # param["to"]="100"
 # param["count"] ="1000"
+# param["count"]  = 1
 # #
 # data = getData(localIP,"8888",param)
 
@@ -57,8 +93,8 @@ r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 #
 # using JSON
 # r = HTTP.request("GET", "http://$localIP:8888/api/getDataTree")
-# tree = JSON.parse(String(r.body))
 #
+
 # svec = base64encode([1,2,3,4,5])
 # data = reinterpret(Int, base64decode(svec)) |> collect
 # toInt = map(x->convert(Int64,x), svec)
@@ -71,34 +107,3 @@ r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 # toInt = reinterpret(String, base64decode(info)) |> collect
 #
 # string(base64decode(info))
-#
-# tag = getData("RSI",localIP,8888)
-# attr = getAttr("Ecg",localIP,8888) #не работает=()
-# res = HTTP.request("GET", "http://$localIP:8888/api/getAttributes?res=oxy115829.dat&dataName=/Mark/EcgChannals/Ecg")
-# res = HTTP.request("GET", "http://$localIP:8888/api/getAttributes?res=oxy115829.dat&dataName=/Mark/EcgChannals")
-#
-# res = HTTP.request("GET", "http://$localIP:8888/apibox/getData?dataName=RSI&index=0&from=0&count=10")
-# toInt = reinterpret(Char, base64decode(res.body)) |> collect
-using Test
-data = getData(localIP,8888,"WidthQRS",0,0,10,10)
-att = helloIBox.getAttr(localIP,8888,"WidthQRS")
-@test att["dstype"]=="interval"
-@test att["offsetdata"]=="QPoint"
-data = getData(localIP,8888,"QPoint",0,0,1,1)
-
-tag = getTag(localIP,8888,"Ecg")
-@test tag=="L"
-# datapath = "Ecg_1"
-# param = Dict()
-# if length(split(datapath,"_"))>1
-#     param["index"] = split(datapath,"_")[2]
-#     datapath = split(datapath,"_")[1]
-# end
-tag = getTag(localIP,8888,"Ecg1")
-
-dataCount = helloIBox.getCountDataInInterval(localIP,8888,"QPoint",0,0,10,1000)
-
-base64decode(data)
-data = Array{UInt8}(undef,2)
-data=[0x2d,0x31]
-@info [data]

@@ -4,6 +4,7 @@ authors = ["YuliyaCl <36585857+YuliyaCl@users.noreply.github.com>"]
 version = "0.1.0"
 
 [deps]
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Cxx = "a0b5b9ef-44b7-5148-a2d1-f6db19f3c3d2"
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
