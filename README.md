@@ -8,7 +8,9 @@
 
 #### Установка
 В julia REPL:
+```
 ] add git@github.com:YuliyaCl/helloIBox.jl.git
+```
 
 #### запуск сервера в Julia:
 ```] activate .
