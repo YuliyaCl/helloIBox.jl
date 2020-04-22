@@ -21,3 +21,12 @@ amp = getData(localIP,8888,"AmpECG",0,0,1,1)
 Fr = getData(localIP,8888,"Freq",0,1,1)
 @test Fr[1]==257
 end
+
+
+#
+# fields = "QPoint,WidthQRS"
+# allFields = split(fields,",")
+# alldataType = [] #собираем типы данных, чтобы работать с ними
+# for f in allFields
+#     push!(alldataType, helloIBox.getDataType(localIP,8888,string(f))) #узнаем тип данных
+# end
