@@ -2,15 +2,16 @@ using helloIBox
 using Sockets
 using HTTP
 using Base64
+using JSON
 using Test
 
 localIP =  Sockets.localhost
 port = 8080
+pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
 @testset "Access to data through IBox" begin
 
 start_server(""; localIP = localIP, port = port)
-r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=C:/Temp/IBox/IBoxLauncher.exe&IBox_host=$localIP")
-r = HTTP.request("GET", "http://$localIP:$port/api/killIBox?res=oxy115829.dat")
+r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 #ЗАПРОС ДАННЫХ
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Freq&index=0&from=0&count=1")
 Freq = reinterpret(Int32, base64decode(r.body)) |> collect
@@ -21,22 +22,26 @@ ecg1 = reinterpret(Int32, base64decode(r.body)) |> collect
 @test length(ecg1)==20 && ecg1[1]==3099 && ecg1[20]==3062
 
 #данные в интервале
-r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint&index=0&from=0&count=300")
+QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+@test QPoint == [101, 221]
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint&index=0&from=0&count=300")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [101, 221]
 
 #данные читаются "чистяком"
-r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=WidthQRS&index=0&from=0&count=30")
-WidthQRS = reinterpret(UInt16, base64decode(r.body)) |> collect
-@test length(WidthQRS) == 30 && WidthQRS[1] == 0x0017
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20")
+@test r.body==[0x5a, 0x51, 0x41, 0x41, 0x41, 0x42, 0x63, 0x41]
 
 #данные "чистяком"
-r = HTTP.request("GET", "http://$localIP:$port/api/getDataRaw?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300")
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=20")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
-@test length(QPoint) == 300 #берет оригинальные точки
+@test length(QPoint) == 20 #берет оригинальные точки
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg&index=2")
 @test String(r.body)=="C1"
+
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg_2")
 @test String(r.body)=="C1"
 
@@ -44,13 +49,22 @@ r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
 tree = JSON.parse(String(r.body))
 @test tree[1]["nodes"][1]["nodes"][1]["name"] == "Ecg"
 
+r = HTTP.request("GET", "http://$localIP:$port/api/Close")
+
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 end
 
-
-
-
-# ###
+#
+# r = HTTP.request("GET", "http://$localIP:8888/api/getStructData?from=100&to=300&dataName=/Mark/QRS&fields=QPoint,WidthQRS")
+# QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+#
+#
+# r = HTTP.request("GET", "http://$localIP:8080/api/getStructData?from=100&to=300&dataName=QRS&fields=WidthQRS")
+# QPoint2 = reinterpret(UInt16, base64decode(r.body)) |> collect
+#
+# t = UInt8[0x65, 0x00, 0x00, 0x00, 0x17, 0x00, 0xdd, 0x00, 0x00, 0x00, 0x15, 0x00]
+#
+# # ###
 # param = Dict()
 # param["dataName"]="Ecg"
 #

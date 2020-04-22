@@ -103,58 +103,21 @@ function runIBox(srv::ServerState, req::HTTP.Request)
 end
 
 #стартуем бокс на файле данных
-function killIBox(srv::ServerState, req::HTTP.Request)
+function Close(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
     # @info filename, filepath, datapath, param
 
-    IBox_path = srv.obj["IBox_path"]
+    localIP = srv.obj["IBox_host"]
     port = srv.obj["IBox_port"]
-    out = "Тут тип загрузился бокс"
-    args = `-close`
-    args = `-config:IBTestWebApi -WebAPISrc[port=$port] -close`
 
-    command = `$IBox_path $filepath $args`
-
-    @async run(command)
+    r = HTTP.request("GET", "http://$localIP:$port/api/Close")
     out = "Бокс закрыт..."
-    # srv.obj["IBox_port"] = port
-    # srv.obj["IBox_path"] = IBox_path
-    # srv.obj["IBox_host"] = IPv4(param["IBox_host"])
 
     res = out |> HTTP.Response |> addResponseHeader
 end
 #бокс уже должен быть запущен! читаем данные из бокса по getData
 function getData(srv::ServerState, req::HTTP.Request)
-    filename, filepath, datapath, param = parse_uri(req.target, srv)
-
-    @info filename, filepath, datapath, param
-    port = srv.obj["IBox_port"]
-    localIP = srv.obj["IBox_host"]
-
-    attr = getAttr(localIP,8888,param["dataName"])
-
-    #проверяем, что это ТОЧНО НЕ равномерно дискретизованый ряд
-    if (haskey(attr,"dstype") && (attr["dstype"]=="event" || attr["dstype"]=="index"))
-        dataCount = getCountDataInInterval(localIP,port,param)
-        param["count"] = string(dataCount)
-    end
-    if param["count"]!="0"
-        data = getData(localIP,port,param)
-        if !isempty(data)
-            out = base64encode(collect(zip(data...)))
-        else
-            out = "null"
-        end
-    else
-        out = "null"
-    end
-
-    res = out |> HTTP.Response  |> addResponseHeader
-end
-
-#читаем данные из бокса по getData БЕЗ определения сколько попало в интервал
-function getDataRaw(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
     @info filename, filepath, datapath, param
@@ -170,6 +133,25 @@ function getDataRaw(srv::ServerState, req::HTTP.Request)
 
     res = out |> HTTP.Response  |> addResponseHeader
 end
+
+#бокс уже должен быть запущен! читаем данные из бокса по getData
+function getStructData(srv::ServerState, req::HTTP.Request)
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+
+    @info filename, filepath, datapath, param
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+
+    data = getStructData(localIP,port,param)
+    if !isempty(data)
+        out = data
+    else
+        out = "null"
+    end
+
+    res = out |> HTTP.Response  |> addResponseHeader
+end
+
 
 #бокс уже должен быть запущен! читаем данные из бокса по getData
 function getDataTag(srv::ServerState, req::HTTP.Request)
@@ -235,10 +217,10 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     # note the use of `*` to capture the path segment "variables"
     # HTTP.@register(H5_ROUTER, "GET", "", handle)
     HTTP.@register(H5_ROUTER, "GET", "/api/runIBox", x->runIBox(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/killIBox", x->killIBox(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/Close", x->Close(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getDataTree", x->getDataTree(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getData", x->getData(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/getDataRaw", x->getDataRaw(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getStructData", x->getStructData(srv, x))
 
     HTTP.@register(H5_ROUTER, "GET", "/api/getDataTag", x->getDataTag(srv, x))
 
@@ -256,6 +238,8 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     @info "$localIP:$port/api/getDataTree"
     @info "$localIP:$port/api/getData?dataName=QPoint&index=0&from=0&to=10&count=100"
 
+    @info "$localIP:$port/api/Close"
+    @info "$localIP:$port/api/closeServer"
 
     server, task
 end

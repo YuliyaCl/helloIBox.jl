@@ -5,15 +5,18 @@ function getData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
     for key in keys(param)
         push!(strParams,String(key)*"="*param[key]*"&")
     end
+
     strParams = join(strParams)
+
     if !haskey(param,"to") && !haskey(param,"count") #если не было указано конца, то читаем всё
         strParams = strParams*"all&"
     end
+
     if !haskey(param,"from")
         strParams = strParams*"from=0&"
     end
     # println("http://$baseIP:$port/apibox/getData?$strParams")
-    res = HTTP.request("GET", "http://$baseIP:$port/apibox/getData?$strParams")
+    res = HTTP.request("GET", "http://$baseIP:$port/api/getData?$strParams")
     data = res.body
     index = param["index"]
 
@@ -21,6 +24,41 @@ function getData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
     convertedData = reinterpret(dataType, base64decode(data)) |> collect
     # @info convertedData
     return convertedData
+end
+
+#запрос данных из в интервале как бы
+function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
+#baseURI = $localIP:$port
+    strParams = []
+    for key in keys(param)
+        push!(strParams,String(key)*"="*param[key]*"&")
+    end
+
+    strParams = join(strParams)
+
+
+    if !haskey(param,"to") && !haskey(param,"count")
+        strParams = strParams*"all&"
+    end
+
+    if !haskey(param,"from")
+        strParams = strParams*"from=0&"
+    end
+
+    println("http://$baseIP:$port/api/getStructData?$strParams")
+    res = HTTP.request("GET", "http://$baseIP:$port/api/getStructData?$strParams")
+    data = res.body
+
+    fields = param["fields"]
+    allFields = split(fields,",")
+    alldataType = [] #собираем типы данных, чтобы работать с ними
+    for f in allFields
+        push!(alldataType, getDataType(baseIP,port,string(f))) #узнаем тип данных
+    end
+
+    # convertedData = reinterpret(dataType, base64decode(data)) |> collect
+    @info alldataType
+    return data
 end
 
 function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0,from=0,to=[],count=[])
@@ -35,7 +73,7 @@ function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0
             addToRequest = addToRequest*"&count=$count"
         end
     end
-    res = HTTP.request("GET", "http://$baseIP:$port/apibox/getData?dataName=$dataName&index=$index$addToRequest")
+    res = HTTP.request("GET", "http://$baseIP:$port/api/getData?dataName=$dataName&index=$index$addToRequest")
     data = res.body
 
     dataType = getDataType(baseIP,port,dataName, index) #узнаем тип данных
@@ -131,6 +169,12 @@ end
 
 #определение типа данных на основании EntityInfo
 function getDataType(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0)
+    #проверяем, не составное ли имя
+    dnparts = split(dataName,"_")
+    if length(dnparts)>1
+        index = dnparts[2]
+        dataName =  dnparts[1]
+    end
     res = HTTP.request("GET", "http://$baseIP:$port/apibox/getEntityInfo?dataName=$dataName&index=$index")
     info = res.body
     info = String(info)
