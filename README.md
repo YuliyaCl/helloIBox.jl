@@ -13,7 +13,8 @@
 ```
 
 #### запуск сервера в Julia:
-```] activate .
+```
+] activate .
 using helloIBox
 using Sockets
 using HTTP
