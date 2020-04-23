@@ -50,6 +50,13 @@ r = HTTP.request("GET", "http://$localIP:$port/api/Close")
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 end
 
+data = UInt8[0x65, 0x00, 0x00, 0x00, 0x17, 0x00, 0xdd, 0x00, 0x00, 0x00, 0x15, 0x00]
+io = IOBuffer(data)
+read(io, Int32)
+read(io, UInt16)
+read(io, Int32)
+read(io, UInt16)
+
 #
 # r = HTTP.request("GET", "http://$localIP:8888/api/getStructData?from=100&to=300&dataName=/Mark/QRS&fields=QPoint,WidthQRS")
 # QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
