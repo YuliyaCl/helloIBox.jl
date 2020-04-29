@@ -30,6 +30,7 @@ dataType = Time #узнаем тип данных
 convertedTime = reinterpret(dataType, base64decode(data)) |> collect
 
 Freq = getData(localIP,8888,"Freq",0,0,1,1)
+Freq = 247
 dataName = Vector{String}(undef,numelCh)
 attribs = Vector{Dict}(undef,numelCh)
 dataECG = Array{Int32}(undef,size[1],numelCh)
@@ -48,7 +49,7 @@ Q = getData(localIP,8888,"QPoint",0,0,sizeQ,sizeQ)
 Wq = getData(localIP,8888,"WidthQRS",0,0,sizeQ,sizeQ)
 
 using HDF5
-h5open("MB10003190819162842s.004/mark.h5", "w") do file
+h5open("MB10003190819162842s.001/mark.h5", "w") do file
     g = g_create(file, "Mark/EcgRecalcChannals") # create a group
     attrs(g)["grouptype"] = "series" # an attribute
     attrs(g)["Freq"] = Freq[1] # an attribute
@@ -64,24 +65,25 @@ h5open("MB10003190819162842s.004/mark.h5", "w") do file
 
     gq = g_create(file, "Mark/QRS") # create a group
     attrs(gq)["grouptype"] = "segment" # an attribute
-    attrs(gq)["ibegdata"] = "QPoint" # an attribute
+    attrs(gq)["ibegdata"] = "Qpoint" # an attribute
     attrs(gq)["ienddata"] = "WidthQRS" # an attribute
 
     attrs(gq)["Freq"] = Freq[1] # an attribute
     attrs(gq)["TimeStart"] = 0.0 #пока так
 
-    gq["QPoint"] = Q              # create a scalar dataset inside the group
-    attrs(gq["QPoint"])["dstype"] = "index" # an attribute
+    gq["Qpoint"] = Q              # create a scalar dataset inside the group
+    attrs(gq["Qpoint"])["dstype"] = "index" # an attribute
     # gq["typе"] = Type              # create a scalar dataset inside the group
     # attrs(gq["typе"])["dstype"] = "feature" # an attribute
 
-    gq["WidthQRS"] = Int32.(Wq)              # create a scalar dataset inside the group
+    gq["WidthQRS"] = Int.(Wq)              # create a scalar dataset inside the group
     attrs(gq["WidthQRS"])["dstype"] = "interval" # an attribute
-    attrs(gq["WidthQRS"])["offsetdata"] = "QPoint" # an attribute
+    attrs(gq["WidthQRS"])["offsetdata"] = "Qpoint" # an attribute
 end
 
 
 
 h5open("MB10003190819162842s.001/mark.h5", "w") do file
     g = g_create(file, "Mark/EcgRecalcChannals") # create a group
+
 end
