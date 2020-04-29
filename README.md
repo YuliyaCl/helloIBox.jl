@@ -6,9 +6,15 @@
 2. dat - файл не загружен в репозиторий, поэтому в локальную копию его надо положить самостоятельно. Тесты написаны под oxy115829.dat 
 Всязть с сервера: X:\БазаСпиро
 
+#### Установка
+В julia REPL:
+```
+] add git@github.com:YuliyaCl/helloIBox.jl.git
+```
 
 #### запуск сервера в Julia:
-```] activate .
+```
+] activate .
 using helloIBox
 using Sockets
 using HTTP
@@ -30,7 +36,7 @@ start_server(""; localIP = localIP, port = port) #стартуем сервер-
 
 #### закрытие бокса
 ```
-пока нет, н оскоро будет
+"http://$localIP:$port/api/Close"
 ```
 
 #### получение тега (имени) данного 
@@ -48,7 +54,7 @@ start_server(""; localIP = localIP, port = port) #стартуем сервер-
 
 #### обращение к данным с помощью getData 
 Индексы в наборах данных идут от 0. Если не заданы to и count, то берутся ВСЕ элементы набора.
-Если запрашиваются данные-позиции, то от-до интерпритируется как интервал в исходных точках. Например, запрос QPoint от 10 и count 100 выдаст те QPoint, которые укладываются в интервал от 10 до 110
+from-to/count в ЭЛЕМЕНТАХ МАССИВА
 
 ```
 #запрос частоты дискретизации:
@@ -60,18 +66,15 @@ start_server(""; localIP = localIP, port = port) #стартуем сервер-
  #запрос 2-го отведения ЭКГ, через нижнее подчеркивание можно задавать индекс для данных
 "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=EcgRecalc_1&from=0&count=20"
 
-#запрос точки Q на интервале от 0 на 300 точек дальше
-"http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300"
-
 #запрос первых 30 WidthQRS
 "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=WidthQRS&index=0&from=0&count=30" 
 ```
-#### обращение к данным с помощью getDataRaw
-При запросе с getDataRaw ВСЕГДА выдаются данные from - to/count в штуках в массиве данных
+#### запрос данных в интервале и по нескольким полям
+При запросе с getStructData ВСЕГДА from-to/count в ТОЧКАХ ИСХОДНОГО СИГНАЛА
 ```
-"http://$localIP:$port/api/getDataRaw?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=300" #запрос 300 штук точек Q  от 0 индекса
+#точки Q и ширина QRS в интервале с 100 по 120 (отсчеты исходного сигнала)
+"http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20"
 ```
 
-#### проблемы запросов к данным
-Сейчас решается вопрос согласования запросов. Так, запросив точки Q на интервале от 0 на 300  нельзя пока получить для них, например, WidthQRS. Это будет решено.
-
+#### комментарии
+Сейчас нет интерактива и в принципе моэжно пользоватсья боксом напрямую. Но потом он появится=)
