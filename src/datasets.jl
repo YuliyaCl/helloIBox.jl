@@ -152,12 +152,12 @@ function construct_dsread(baseIP::IPv4,port::Union{String,Int64},dsname::String)
 end
 
 #создаем новый датасет - точнее открывем его и читаем атрибуты поля
-function ds_new(baseIP::IPv4,port::Union{String,Int64},groupname::String,dsname::String, attr::Dict)
+function ds_new(baseIP::IPv4,port::Union{String,Int64},groupname::String,dsname::String, attr::Dict,TG = [], PhInfo = [])
     #если ничего не известно про атрибуты
     #информация о канале
-
-    TG, PhInfo = parseAttr(attr)
-
+    if isempty(TG)
+        TG, PhInfo = parseAttr(attr)
+    end
     dstype = attr["dstype"] #signal/param/index/interval/feature
     if dstype == "feature"
         mask = getMask(parseType(attr))
@@ -180,7 +180,7 @@ function ds_new(baseIP::IPv4,port::Union{String,Int64},groupname::String,dsname:
     end
 
     DS_obj= ds_new(baseIP,port,dsname,attr,ds_reader,ds_readerInRange,TG,PhInfo,mask)
-    return DS_obj, ds_reader,ds_readerInRange, TG, PhInfo, mask
+    return DS_obj
 end
 
 

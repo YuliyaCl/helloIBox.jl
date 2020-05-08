@@ -47,13 +47,6 @@ function parse_uri(reqstr::AbstractString, srv::ServerState)
     uri = parse(HTTP.URI, reqstr)
     param = HTTP.URIs.queryparams(uri)
     args = HTTP.URIs.splitpath(uri.path)
-    if haskey(param,"dataName")
-        #разбираем имя данных типа Ecg_1 => Ecg&index=1
-        if length(split(param["dataName"],"_"))>1
-            param["index"] = split(param["dataName"],"_")[2]
-            param["dataName"] = split(param["dataName"],"_")[1]
-        end
-    end
 
     if !haskey(param,"res")
         #старый вариант работы
@@ -102,7 +95,7 @@ function runIBox(srv::ServerState, req::HTTP.Request)
     res = out |> HTTP.Response |> addResponseHeader
 end
 
-#стартуем бокс на файле данных
+#закрываем бокс на файле данных
 function Close(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
@@ -116,6 +109,39 @@ function Close(srv::ServerState, req::HTTP.Request)
 
     res = out |> HTTP.Response |> addResponseHeader
 end
+
+function redirectRequest(srv::ServerState, req::HTTP.Request)
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+    regstr = req.target #само содержание запроса
+
+    if haskey(srv.obj["dataStorage"],datapath) #был объект, значит были ручные правки - читаем из него
+        out = "Объект имеется"
+    else #объекта нет, значит читаем напрямую
+        port = srv.obj["IBox_port"]
+        localIP = srv.obj["IBox_host"]
+        println("http://$localIP:$port$regstr")
+        r = HTTP.request("GET", "http://$localIP:$port$regstr")
+        out = r.body
+    end
+
+    res = out |> HTTP.Response |> addResponseHeader
+end
+function manualMark(srv::ServerState, req::HTTP.Request)
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+    infoEvent = String(req.body)
+    #парсим команду
+    segInRange = parseCommand(srv.obj,infoEvent)
+    if isa(segInRange,StructArray)
+        data = collect(zip(segInRange))
+        out = base64encode(data)
+    else
+        out = "Command was parsed"
+    end
+
+    res = out|> HTTP.Response |> addResponseHeader
+
+end
+
 #бокс уже должен быть запущен! читаем данные из бокса по getData
 function getData(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
@@ -133,59 +159,6 @@ function getData(srv::ServerState, req::HTTP.Request)
 
     res = out |> HTTP.Response  |> addResponseHeader
 end
-
-#бокс уже должен быть запущен! читаем данные из бокса по getData
-function getStructData(srv::ServerState, req::HTTP.Request)
-    filename, filepath, datapath, param = parse_uri(req.target, srv)
-
-    @info filename, filepath, datapath, param
-    port = srv.obj["IBox_port"]
-    localIP = srv.obj["IBox_host"]
-
-    data = getStructData(localIP,port,param)
-    if !isempty(data)
-        out = base64encode(data)
-    else
-        out = "null"
-    end
-
-    res = out |> HTTP.Response  |> addResponseHeader
-end
-
-
-#бокс уже должен быть запущен! читаем данные из бокса по getData
-function getDataTag(srv::ServerState, req::HTTP.Request)
-    filename, filepath, datapath, param = parse_uri(req.target, srv)
-
-    @info filename, filepath, datapath, param
-    port = srv.obj["IBox_port"]
-    localIP = srv.obj["IBox_host"]
-    if haskey(param,"index")
-        index = param["index"]
-    else
-        index = 0
-    end
-    tag = getTag(localIP,port,param["dataName"],index)
-
-    @info tag
-
-    res = tag |> HTTP.Response |> addResponseHeader
-end
-
-#структура файла
-function getDataTree(srv::ServerState, req::HTTP.Request)
-    filename, filepath, datapath, param = parse_uri(req.target, srv)
-
-    @info filename, filepath, datapath, param
-    port = srv.obj["IBox_port"]
-    localIP = srv.obj["IBox_host"]
-    res = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
-    # @info res
-    out = String(res.body)
-    tree = JSON.parse(out)
-    res = out |> HTTP.Response |> addResponseHeader
-end
-
 
 
 
@@ -208,21 +181,22 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     AllObj = Dict()
     AllObj["history"] = [] #тут храним действия над ВСЕМИ датагруппами подряд
     AllObj["state"] = 0
-
+    AllObj["dataStorage"] = Dict{String,Any}()
     srv = ServerState(dir,AllObj)
 
     # define REST endpoints to dispatch to "service" functions
     #=const=# H5_ROUTER = HTTP.Router()
 
     # note the use of `*` to capture the path segment "variables"
-    # HTTP.@register(H5_ROUTER, "GET", "", handle)
+    HTTP.@register(H5_ROUTER, "GET", "", handle)
     HTTP.@register(H5_ROUTER, "GET", "/api/runIBox", x->runIBox(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/Close", x->Close(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/getDataTree", x->getDataTree(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/getData", x->getData(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/getStructData", x->getStructData(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getDataTree", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getData", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getStructData", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getTag", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->redirectRequest(srv, x))
 
-    HTTP.@register(H5_ROUTER, "GET", "/api/getDataTag", x->getDataTag(srv, x))
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))
     #

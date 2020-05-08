@@ -1,4 +1,6 @@
-# abstract type DataGroup end
+include("timeseries.jl")
+include("datasets.jl")
+abstract type DataGroup end
 
 mutable struct SeriesDataGroup <:DataGroup #signal равномерно дискретный ряд
     filepath::String
@@ -34,10 +36,10 @@ mutable struct ChannelDataGroup <:DataGroup # канал (все данные, �
 end
 
 mutable struct SegmentDataGroup <:DataGroup #сегмент
-    filepath::String
+    # filepath::String
     groupname::String
 
-    TG:: TimeGrid
+    TG::TimeGrid
     ibegdata:: String
     ienddata:: String
     typename:: String
@@ -61,10 +63,23 @@ mutable struct UnknownDataGroup <:DataGroup #сегмент
 
 end
 
-function dg_new(baseIP::IPv4,port::Union{String,Int64},filepath::String, datapath::String)
+function dg_new(baseIP::IPv4,port::Union{String,Int64},groupName::String, dataName::String)
 
-    attr = getAttr(baseIP,port, datapath)
-    # TG,PhInfo = parseChAttr(filepath, datapath)
+    r = HTTP.request("GET", "http://$baseIP:$port/api/getDataTree")
+    tree = JSON.parse(String(r.body))[1]
+    node =  findnode(tree, groupName) #запрос группы
+    attr = node["attrs"]
+
+    #пока берем так. но надо бы из группы данных
+    r = HTTP.request("GET", "http://$baseIP:$port/api/getData?dataName=Freq&index=0&from=0&count=1")
+    Freq = reinterpret(Int32, base64decode(r.body)) |> collect
+    r = HTTP.request("GET", "http://$baseIP:$port/api/getData?dataName=StartTime&index=0&from=0&count=1")
+    StartTime = reinterpret(Int32, base64decode(r.body)) |> collect
+
+    attr["Freq"] = Freq[1]
+    attr["StartTime"] = StartTime[1]
+    #определяем временную сетку. хз зачем, правда
+    TG,PhInfo = parseAttr(attr)
 
     #создаем пустую штуку для хранения истории
     URT = UndoRedoTool()
@@ -72,15 +87,31 @@ function dg_new(baseIP::IPv4,port::Union{String,Int64},filepath::String, datapat
     if !haskey(attr,"grouptype")
         return []
     else
-        if attr["grouptype"]=="segment"
-            # ibegdata = attr["ibegdata"]
-            # ienddata = attr["ienddata"]
-            # mask = getMask(parseType(attr))
-            # if isempty(mask)
-            #     #если не было маски, то называем тип по имени датагруппы
-            #     grpname = split(datapath,"/")[end-1]
-            #     mask[grpname] = AllMask(UInt32(1),UInt32(1))
-            # end
+        if haskey(attr, "grouptype") && attr["grouptype"]=="segment"
+            ibegdata = attr["ibegdata"]
+            ienddata = attr["ienddata"]
+            if haskey(attr,"typedata")
+                featureName = attr["typedata"]
+                loadDsNames = [ibegdata, ienddata, featureName]
+            else
+                featureName = "none"
+                loadDsNames = [ibegdata, ienddata]
+            end
+            mask = getMask(parseType(attr))
+            if isempty(mask)
+                #если не было маски, то называем тип по имени датагруппы
+                mask[groupName] = AllMask(UInt32(1),UInt32(1))
+            end
+
+            DS = Dict{String,Any}()
+            for ds in loadDsNames
+                node =  findnode(tree, ds) #запрос группы
+                attrds = node["attrs"]
+                attrds["datatype"] = eval(Symbol(node["type"]))
+                attrds["Freq"] = Freq[1]
+                attrds["StartTime"] = StartTime[1]
+                DS[ds] = ds_new(baseIP,port,groupName,ds, attrds)
+            end
             # DataSets, data = loadDataSets(fid,datapath)
             # dataStr = StructArray((name = DataSets, data = data))
             # if any(isa.(data,FeatureDataSet))
@@ -88,68 +119,86 @@ function dg_new(baseIP::IPv4,port::Union{String,Int64},filepath::String, datapat
             # else
             #     featureName = "none"
             # end
-            # DG_obj = SegmentDataGroup(filepath,datapath,fid,TG,ibegdata,ienddata,featureName,mask,dataStr,[],URT)
-        elseif attr["grouptype"]=="series"
-
-            DataSets, data = loadDataSets(fid,datapath)
-            dataStr = StructArray((name = DataSets, data = data))
-
-            DG_obj = SeriesDataGroup(filepath, datapath, fid, TG, PhInfo, dataStr,[], URT)
-        elseif attr["grouptype"]=="event"
-            index = attr["indexdata"]
-
-            DataSets, data = loadDataSets(fid,datapath)
-            dataStr = StructArray((name = DataSets, data = data))
-
-            DG_obj = EventDataGroup(filepath, datapath, fid, TG, index, dataStr,[], URT)
-
-        elseif attr["grouptype"]=="channel"
-
-            DataSets, data = loadDataSets(fid,datapath)
-            dataStr = StructArray((name = DataSets, data = data))
-            DG_obj = ChannelDataGroup(filepath, datapath, fid, TG, PhInfo, dataStr,[], URT)
+             DG_obj = SegmentDataGroup(groupName,TG,ibegdata,ienddata,featureName,mask,DS,[],URT)
+        # elseif attr["grouptype"]=="series"
+        #
+        #     DataSets, data = loadDataSets(fid,datapath)
+        #     dataStr = StructArray((name = DataSets, data = data))
+        #
+        #     DG_obj = SeriesDataGroup(filepath, datapath, fid, TG, PhInfo, dataStr,[], URT)
+        # elseif attr["grouptype"]=="event"
+        #     index = attr["indexdata"]
+        #
+        #     DataSets, data = loadDataSets(fid,datapath)
+        #     dataStr = StructArray((name = DataSets, data = data))
+        #
+        #     DG_obj = EventDataGroup(filepath, datapath, fid, TG, index, dataStr,[], URT)
+        #
+        # elseif attr["grouptype"]=="channel"
+        #
+        #     DataSets, data = loadDataSets(fid,datapath)
+        #     dataStr = StructArray((name = DataSets, data = data))
+        #     DG_obj = ChannelDataGroup(filepath, datapath, fid, TG, PhInfo, dataStr,[], URT)
 
         else #непонятные данные
-            DataSets, data = loadDataSets(fid,datapath)
-            dataStr = StructArray((name = DataSets, data = data))
-            DG_obj = UnknownDataGroup(filepath, datapath, fid, attr, dataStr, [], URT)
-
+            # DataSets, data = loadDataSets(fid,datapath)
+            # dataStr = StructArray((name = DataSets, data = data))
+            # DG_obj = UnknownDataGroup(filepath, datapath, fid, attr, dataStr, [], URT)
+            DG_obj = []
         end
     end
     DG_obj.UndoRedo.sourse = DG_obj
     return DG_obj
 end
 
-#создаем датасеты на группу
-function loadDataSets(baseIP::IPv4,port::Union{String,Int64},datapath::String)
+#смотрим, исходные ширины это сегменты с началом-концом или шириной
+function getSegBegsType(DG::SegmentDataGroup)
+    #!!!! исправить длину
+    ibeg =  DG.data[DG.ibegdata].data[1]("0","","100")
+    iendDS = DG.data[DG.ienddata]
+    typename = DG.typename
 
-    r = HTTP.request("GET", "http://$baseIP:$port/api/getDataTree")
-    tree = JSON.parse(String(r.body))[1]
-
-    g = g_open(fid, datapath)
-    dataNames = names(g)  #какие датасеты содержит группа
-    flLoadDS = typeof(fid[datapath*dataNames[1]*"/"])==HDF5Dataset
-
-
-    if !flLoadDS #а вдруг это группа
-        data = Vector{DataGroup}(undef,length(dataNames))
-        i = 1
-        for gr in dataNames
-             data[i] = dg_new(fid, datapath*gr*"/")
-             i+=1
-         end
+    isW = isa(iendDS, IntervalDataSet) #ширина ли это
+    if isW
+        iend = ibeg + Int32.(iendDS.data[1]("0","","100"))
     else
-        data = Vector{DataSet}(undef,length(dataNames))
-        #DS_obj, fid, TG, PhInfo, mask = ds_new(fid, datapath,  DataSets[1])
-        #data[1] = DS_obj
-        i = 1
-        for nameDS in dataNames #[2:end]
-            DS_obj, fid, TG, PhInfo, mask = ds_new(fid, datapath,  nameDS)
-                #DS_obj = ds_new(fid, datapath, nameDS, TG, PhInfo, mask)
-            data[i] = DS_obj
-            i+=1
-        end
+        iend = iendDS.data[1]("0","","100")
+    end
+    if occursin(typename,"none") #none там, где нет данных типа
+        type = ones(Int64,size(ibeg))
+    else
+        type =DG.data[typename].data[1]("0","","100")
     end
 
-    return dataNames, data
+    ibeg, iend, type, isW
+end
+#добавление нового сегмента
+#command тут не обрабатывается, только пишется в историю правок датагруппы
+function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
+
+    if isempty(DG.result) || DG.UndoRedo.state==0 #&& (!haskey(URT.result["ibeg"]) || isempty(URT.result["ibeg"]))
+        #если ничего не делалось над объектом, то читаем данные из источника
+        ibeg, iend, type, isW = getSegBegsType(DG)
+        oldSeg = StructArray(ibeg = ibeg, iend = iend, type = type)
+    else
+        #если были правки раньше
+        iendDS =  DG.data[DG.ienddata]
+        isW = isa(iendDS, IntervalDataSet) #ширина ли это
+
+        resultOld = DG.result
+        list = getfield(resultOld, :fieldarrays) #тк в резалте другие имена, пересобираем в стандартные
+        if isW
+            iend = list[1] + list[2]
+        else
+            iend = list[2]
+        end
+        oldSeg = StructArray((list[1], iend, list[3]), names = (Symbol("ibeg"),Symbol("iend"),Symbol("type")))
+    end
+    result = add_seg(oldSeg,newSeg,mode)
+    if isW
+        iend = result.iend - result.ibeg
+    else
+        iend = result.iend
+    end
+    DG.result = StructArray((result.ibeg, iend, result.type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
 end

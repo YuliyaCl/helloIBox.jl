@@ -1,3 +1,10 @@
+using helloIBox
+using Sockets
+using HTTP
+using Base64
+using JSON
+using Test
+
 localIP =  Sockets.localhost
 port = 8080
 pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
@@ -84,3 +91,6 @@ QPoint = reinterpret(UInt8, base64decode(r.body)) |> collect
 
 r = HTTP.request("GET", "http://127.0.0.1:8888/api/getData?dataName=NoiseQRS&res=oxy115829.dat&count=6&from=0&index=0")
 QPoint = reinterpret(UInt8, base64decode(r.body)) |> collect
+
+d = Dict{String,Any}()
+d["ss"]=1

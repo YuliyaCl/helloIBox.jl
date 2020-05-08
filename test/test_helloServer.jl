@@ -21,33 +21,31 @@ r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dat
 ecg1 = reinterpret(Int32, base64decode(r.body)) |> collect
 @test length(ecg1)==20 && ecg1[1]==3099 && ecg1[20]==3062
 
-#данные в интервале
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint&index=0&from=0&count=300")
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=Ecg_1&from=10&to=15")
+ECG = reinterpret(Int32, base64decode(r.body)) |> collect
+@test ECG == [3110, 3102, 3072, 3038, 3041]
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=200&to=400")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
-@test QPoint == [101, 221]
-
-#данные читаются "чистяком"
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20")
-@test r.body==[0x5a, 0x51, 0x41, 0x41, 0x41, 0x42, 0x63, 0x41, 0x41, 0x41, 0x41, 0x3d ] # 101 и 23
-
-#данные "чистяком"
-r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=20")
-QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
-@test length(QPoint) == 20 #берет оригинальные точки
-
-r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg&index=2")
-@test String(r.body)=="C1"
-
-r = HTTP.request("GET", "http://$localIP:$port/api/getDataTag?res=oxy115829.dat&dataName=Ecg_2")
-@test String(r.body)=="C1"
-
+@test QPoint == [221]
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
 tree = JSON.parse(String(r.body))
 @test tree[1]["nodes"][1]["nodes"][1]["name"] == "Ecg"
+r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg_2")
+@test String(r.body)=="C1"
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getAttributes?res=oxy115829.dat&dataName=/Mark/EcgChannals/Ecg&index=1")
+attr = JSON.parse(String(r.body))
+@test attr["tag"] == "F" && attr["dstype"] == "signal"
+
+#другой вариант обращения к данным
+r = HTTP.request("GET", "http://$localIP:$port/api/getAttributes?res=oxy115829.dat&dataName=Ecg_2")
+attr = JSON.parse(String(r.body))
+@test attr["tag"] == "C1" && attr["dstype"] == "signal"
 
 r = HTTP.request("GET", "http://$localIP:$port/api/Close")
 
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
+
 end
 
 #
