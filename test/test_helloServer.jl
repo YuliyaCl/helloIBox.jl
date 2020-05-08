@@ -28,7 +28,7 @@ QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 
 #данные читаются "чистяком"
 r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20")
-@test r.body==[0x5a, 0x51, 0x41, 0x41, 0x41, 0x42, 0x63, 0x41]
+@test r.body==[0x5a, 0x51, 0x41, 0x41, 0x41, 0x42, 0x63, 0x41, 0x41, 0x41, 0x41, 0x3d ] # 101 и 23
 
 #данные "чистяком"
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=QPoint&index=0&from=0&count=20")

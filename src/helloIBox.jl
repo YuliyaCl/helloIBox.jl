@@ -6,12 +6,12 @@ using StructArrays
 using Dates
 using Sockets
 
-export  start_server, getData, getTag, getDataTree,getChildsCount, getAttr
+export  start_server, getData, getTag, getDataTree,getChildsCount, getAttr, getStructData
 
 include("helloServer.jl")
 include("IBoxAPI.jl")
-# include("timeseries.jl")
-# include("datasets.jl")
+include("timeseries.jl")
+include("datasets.jl")
 
 
 end # module

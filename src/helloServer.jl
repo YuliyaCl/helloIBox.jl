@@ -144,7 +144,7 @@ function getStructData(srv::ServerState, req::HTTP.Request)
 
     data = getStructData(localIP,port,param)
     if !isempty(data)
-        out = data
+        out = base64encode(data)
     else
         out = "null"
     end
