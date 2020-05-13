@@ -55,7 +55,6 @@ function parse_uri(reqstr::AbstractString, srv::ServerState)
     else
         filepath = joinpath(srv.path, param["res"])
         filename = basename(filepath)
-        @info filename
 
         srv.obj["filename"]  = filename
         srv.obj["filepath"]  = filepath
@@ -113,9 +112,22 @@ end
 function redirectRequest(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
     regstr = req.target #само содержание запроса
-
+    @info filename, filepath, datapath, param
     if haskey(srv.obj["dataStorage"],datapath) #был объект, значит были ручные правки - читаем из него
-        out = "Объект имеется"
+        @info datapath
+        DG = srv.obj["dataStorage"][datapath]
+        from = parse(Int32,param["from"])
+        to = parse(Int32,param["to"])
+        if occursin("getData",regstr)
+            data = getData(DG,from,to,param["fields"])
+        elseif occursin("getStructData",regstr)
+            data = getStructData(DG,from,to,param["fields"])
+        end
+
+        @info data
+        out = collect(zip(data...))
+        out = base64encode(out)
+        println("Объект имеется")
     else #объекта нет, значит читаем напрямую
         port = srv.obj["IBox_port"]
         localIP = srv.obj["IBox_host"]
@@ -125,21 +137,6 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
     end
 
     res = out |> HTTP.Response |> addResponseHeader
-end
-function manualMark(srv::ServerState, req::HTTP.Request)
-    filename, filepath, datapath, param = parse_uri(req.target, srv)
-    infoEvent = String(req.body)
-    #парсим команду
-    segInRange = parseCommand(srv.obj,infoEvent)
-    if isa(segInRange,StructArray)
-        data = collect(zip(segInRange))
-        out = base64encode(data)
-    else
-        out = "Command was parsed"
-    end
-
-    res = out|> HTTP.Response |> addResponseHeader
-
 end
 
 #бокс уже должен быть запущен! читаем данные из бокса по getData
@@ -160,7 +157,45 @@ function getData(srv::ServerState, req::HTTP.Request)
     res = out |> HTTP.Response  |> addResponseHeader
 end
 
+"""
+запись ручных правок
+{
+    "chName": "",
+    "targetData": "",
+    "command": {
+        "id": "",
+        "args": {
+            "ibeg": [],
+            "iend": [],
+            "type": [""],
+            "mode": ""
+        }
+    }
+}
+"""
+function manualChange(srv::ServerState, req::HTTP.Request)
+    #информация о добавляемом сегменте лежит в JSONe, он может передаваться вместе с данными о файле
+    #пока файл подчитывается из папки
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
 
+    infoEvent = String(req.body)
+    #парсим команду
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+    #парсим команду
+    segInRange = parseCommand(localIP, port, srv.obj,infoEvent)
+
+    if isa(segInRange,StructArray)
+        data = collect(zip(segInRange))
+        out = base64encode(data)
+    else
+        out = "Command was parsed"
+    end
+
+    res = out|> HTTP.Response |> addResponseHeader
+
+    return res
+end
 
 """
 Запуск сервера (в асинхронном режиме):
@@ -196,6 +231,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     HTTP.@register(H5_ROUTER, "GET", "/api/getStructData", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getTag", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/manualChange", x->manualChange(srv, x))
 
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))

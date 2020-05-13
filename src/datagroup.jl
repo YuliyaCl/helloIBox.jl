@@ -63,7 +63,7 @@ mutable struct UnknownDataGroup <:DataGroup #сегмент
 
 end
 
-function dg_new(baseIP::IPv4,port::Union{String,Int64},groupName::String, dataName::String)
+function dg_new(baseIP::IPv4,port::Union{String,Int64},groupName::String)
 
     r = HTTP.request("GET", "http://$baseIP:$port/api/getDataTree")
     tree = JSON.parse(String(r.body))[1]
@@ -201,4 +201,266 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
         iend = result.iend
     end
     DG.result = StructArray((result.ibeg, iend, result.type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
+end
+
+#изменение типа сегментов, попавших в диапазон от-до
+function changeType!(DG::SegmentDataGroup,from::Int64,to::Int64, mode::String,type_names::Union{String,Vector{String}},mask::Dict)
+    if DG.UndoRedo.state==0 #&& (!haskey(URT.result["ibeg"]) || isempty(URT.result["ibeg"]))
+        #если ничего не делалось над объектом, то читаем данные из источника
+        #если ничего не делалось над объектом, то читаем данные из источника
+        ibeg, iend, type, isW = getSegBegsType(DG)
+    else
+        #если были правки раньше
+        iendDS =  DG.data[DG.ienddata]
+        isW = isa(iendDS, IntervalDataSet) #ширина ли это
+
+        resultOld = DG.result
+        list = getfield(resultOld, :fieldarrays) #тк в резалте другие имена, пересобираем в стандартные
+        if isW
+            iend = list[1] + list[2]
+        else
+            iend = list[2]
+        end
+        ibeg = list[1]
+        type = list[3]
+    end
+    #определяем попавшие в диапазон сегменты
+    segRange = searchinrange(ibeg,iend,from,to)
+    if mode == "delete"
+        #прям удаляем сегменты, попавшие под выделение
+        deleteat!(ibeg,segRange)
+        deleteat!(iend,segRange)
+        deleteat!(type,segRange)
+    elseif mode=="setbit"
+        #присваеваем новый тип
+        new_types = setbit(mask,type[segRange],type_names)
+        type[segRange] .= new_types
+    elseif mode=="rewrite"
+        new_types = detIntType(DG.mask,type_names)
+        type[segRange] .= new_types
+    end
+    if isW
+        iend = iend - ibeg
+    end
+    #записываем новые сегменты
+    DG.result = StructArray((ibeg, iend, type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
+end
+
+#обработка команды-правки пользователя
+#AllObj - набор датагрупп в памяти
+#command - прочитанный в String JSON-file
+#flUR - флаг Undo-Redo , если true, то история не перетирается
+function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,command::String,flUR = 0)
+    #разбор JSON-a
+    #судя по докам, он умеет парсить только в словарь
+    #на сервере уже разбирали файл-команду
+    manualEvent = JSON.parse(command)
+
+    #пока считаем, что имя группы лежит в chName
+    gp_name = manualEvent["chName"]
+    comandID = manualEvent["command"]["id"] #определяем, какую команду делаем с сегментом
+    #в sessionID идентификатор события
+    if haskey(manualEvent,"sessionID")
+        sessionID = manualEvent["sessionID"]
+    else
+        sessionID = "12345"
+    end
+    #ТУТ НАДО НАЙТИ ОБЪЕКТ, КОТОРЫЙ СООТВЕТСТВУЕТ ДАННЫМ, КОТОРЫЕ ПРАВИМ
+    if ~isempty(AllObj["dataStorage"]) && haskey(AllObj["dataStorage"],gp_name)
+        DG = AllObj["dataStorage"][gp_name]
+    else
+        DG = dg_new(baseIP,port,gp_name)
+        @info AllObj["dataStorage"]
+        AllObj["dataStorage"][gp_name] = DG
+        #тут можно использовать targetData
+    end
+
+    # filePath = collect(splitpath(DG.filepath))
+
+    #Это бы надо куда-то снаружи, но ладно. Мы ж независимы..
+
+    filePath =  sessionID*"_history.json"
+    historyPath = sessionID*"_history.json"
+    # @info historyPath
+    if comandID == "ADD_SEGMENT"
+        #границы добавляемого фрагмента
+        ibeg = convert.(Int,manualEvent["command"]["args"]["ibeg"])
+        iend = convert.(Int,manualEvent["command"]["args"]["iend"])
+        type = convert.(String,manualEvent["command"]["args"]["type"])
+        if type == "+"
+            type = string(keys(DG.mask))[3:end-2]
+        end
+        if haskey(manualEvent["command"]["args"],"mode")
+            mode = manualEvent["command"]["args"]["mode"]
+        else
+            mode = "rewrite"
+        end
+        typeNum = detIntType(DG.mask,type) #преобразуем тип в число
+        type = Vector{Int}(undef,length(ibeg)) #если несколько
+        type[1:end] .= typeNum
+
+        if !isa(ibeg,Vector) #если было одно значение только, то его в вектор надо
+            ibeg = [ibeg]
+            iend = [iend]
+        end
+
+        newSeg = StructArray(ibeg = ibeg, iend = iend, type = type)
+        #addSeg!(DG,newSeg,"rewrite",commandToString(manualEvent["command"]))
+        addSeg!(DG,newSeg,mode)
+
+    elseif comandID == "CHANGE_TYPE" || comandID == "DELETE_SEGMENT"
+        from = manualEvent["command"]["args"]["ibeg"]
+        to = manualEvent["command"]["args"]["iend"]
+        newType = manualEvent["command"]["args"]["type"]
+        if comandID == "CHANGE_TYPE"
+            mode = manualEvent["command"]["args"]["mode"]
+        else
+            mode = "delete"
+            newType = Vector{String}()
+        end
+        changeType!(DG,from,to,mode,newType,DG.mask) #type - вектор String c именами
+    else
+        println("Unknown command")
+    end
+    #обновляем состояние,наращиваем историю
+    #если стейт и количество объектов в истории совпадают - то все норм
+    if flUR==0
+        #это не  undo-redo - пришла новая правка
+        if DG.UndoRedo.state==size(DG.UndoRedo.history,1)
+            DG.UndoRedo.state+=1
+            push!(DG.UndoRedo.history,command)
+
+            push!(AllObj["history"],command)
+            AllObj["state"] += 1
+        elseif DG.UndoRedo.state<=size(DG.UndoRedo.history,1)
+            #если была новая правка после undo, То все после в истории надо перетереть
+            deleteat!(DG.UndoRedo.history,DG.UndoRedo.state+1:size(DG.UndoRedo.history,1))
+            DG.UndoRedo.state+=1
+            push!(DG.UndoRedo.history,command)
+
+            deleteat!(AllObj["history"],AllObj["state"]+1:size(AllObj["history"],1))
+            push!(AllObj["history"],command)
+            AllObj["state"] += 1
+        end
+        # пишем
+        writeManualMark(command, historyPath)
+
+    elseif flUR == 1
+        #1 - значит redo
+        # пишем команду
+        writeManualMark(command, historyPath)
+
+    elseif flUR == -1
+        #-1 - значит undo и надо удалить последнюю строку из файла
+        #ничего не делаем
+        deleteLastCommand(historyPath)
+    end
+    #если были заданы границы, то выдаем сегменты в них
+    if haskey(manualEvent,"fromto")
+        segInRange = getSegInRange(DG, manualEvent["fromto"][1],manualEvent["fromto"][2])
+        return segInRange
+    else
+        return AllObj
+    end
+
+end
+
+function findSegDS(DG::SegmentDataGroup,from::Union{Int32,Int64},to::Union{Int32,Int64},features="")
+    if !isempty(DG.result)
+        iendDS =  DG.data[DG.ienddata]
+        isW = isa(iendDS, IntervalDataSet) #ширина ли это
+
+        resultOld = DG.result
+        list = getfield(resultOld, :fieldarrays) #тк в резалте другие имена, пересобираем в стандартные
+        if isW
+            iend = list[1] + list[2]
+        else
+            iend = list[2]
+        end
+        ibeg = list[1]
+        type = list[3]
+
+        segs = DG.result
+    else
+        ibeg, iend, type, isW = getSegBegsType(DG)
+        if iW
+            iendW = iend - ibeg
+        else
+            iendW = iend
+        end
+        segs = StructArray(ibeg = ibeg,iend = iendW,type = type)
+    end
+    return segs,ibeg,iend
+end
+#запрос сегментов в диапазоне - нужно для отправки клиенту для отрисовки
+#в features добавить фильтр по типу
+function getSegInRange(DG::SegmentDataGroup,from::Int64,to::Int64,features="")
+
+    segs,ibeg,iend = findSegDS(DG,from,to)
+    range = searchinrange(ibeg,iend,from,to)
+
+    SIR = segs[range]
+    """
+    добавить фильтр по типам из features
+    """
+    #тут надо наверное делать json или еще что-то
+    return SIR
+end
+
+function getStructData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all")
+    if isa(DG,SegmentDataGroup)
+        if !isempty(DG.result)
+            segs,ibeg,iend = findSegDS(DG,from,to)
+            range = searchinrange(ibeg,iend,from,to)
+            data = getData(DG,range.start,range.stop,dsTake)
+        end
+    end
+end
+#запрос данных из датагрупп
+function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all")
+    ind = Int32(from):Int32(to)
+    data = DG.result
+    allInRes = true
+    if dsTake != "all"
+        if ~isa(dsTake,Vector)
+            dsTake = [dsTake]
+        end
+        for dsT in dsTake
+            #если хотим что-то из нередактируемых данных
+            allInRes = allInRes && any(Symbol(dsT).==propertynames(DG.result)) && dsT!="original"
+        end
+    end
+    if DG.UndoRedo.state>0 && !isempty(DG.result) && allInRes
+        allDS = DG.result
+        data = Vector{Any}()
+        list = getfield(allDS, :fieldarrays)
+        if dsTake=="all"
+            for i = 1:length(propertynames(allDS))
+                addData = list[i][ind]
+                push!(data,addData)
+            end
+        else
+            i=1
+            for key in dsTake
+                fi = findall(x-> x== Symbol(key), propertynames(allDS))
+                if !isempty(fi) #запрашеваемое поле найдено
+                    @info list[fi[1]]
+                    addData = list[fi[1]][ind]
+                    push!(data,addData)
+                end
+                i+=1
+            end
+            if length(dsTake) == 1
+                data = data[1]
+            end
+        end
+        return data
+    else
+        println("Даные были изменены, пока доступа к ним нет")
+        return []
+        # allDS = DG.data.data
+        # DSs = [[DG.data.data[i].data] for i = 1:length(DG.data)]
+        # allDS = StructArray((DSs...,), names = (Symbol.(DG.data.name)...,))
+    end
+
 end

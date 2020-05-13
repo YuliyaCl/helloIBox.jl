@@ -18,6 +18,7 @@ include("features.jl")
 include("datasets.jl")
 include("undoredo.jl")
 include("datagroup.jl")
+include("manualmarks.jl")
 
 
 end # module
