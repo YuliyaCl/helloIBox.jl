@@ -14,11 +14,10 @@ helloIBox.addSeg!(DG,newSeg,"simpleAdd")
 
 DG = dg_new(localIP,8888,"QRS")
 allObj = Dict{String,Any}()
-allObj["QRS"] = DG
 allObj["history"] = []
 allObj["state"] = 0
 allObj["dataStorage"] = Dict{String,Any}()
-
+allObj["dataStorage"]["QRS"] = DG
 command1Path = joinpath(Base.@__DIR__, "files","oxy115829.002","command_FT.json")
 command_FT= String(read(command1Path))
 helloIBox.parseCommand(localIP, 8888, allObj,command_FT)

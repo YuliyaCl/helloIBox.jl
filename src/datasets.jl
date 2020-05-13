@@ -41,6 +41,8 @@ mutable struct PhysicalDataSet{T} <: DataSet{T} # а и б, только реж�
     type::String # “signal” / “param”
     lsb::PhysicalInfo
     name::String
+    datatype
+
     data
     data_IM::InMemory_data{T}
 end
@@ -48,6 +50,8 @@ end
 mutable struct IndexDataSet{T} <: DataSet{T}
     TG::TimeGrid
     name::String
+    datatype
+
     data
     data_IM::InMemory_data{T}
 end
@@ -56,6 +60,8 @@ mutable struct IntervalDataSet{T} <: DataSet{T}
     offsetdata #::IndexDataSet
     TG::TimeGrid
     name::String
+    datatype
+
     data
     data_IM::InMemory_data{T}
 end
@@ -63,6 +69,8 @@ end
 mutable struct FeatureDataSet{T} <: DataSet{T}
     mask::Dict
     name::String
+    datatype::DataType
+
     data
     data_IM:: InMemory_data{T}
 end
@@ -187,20 +195,21 @@ end
 #создаем объект набора данных
 function ds_new(baseIP::IPv4,port::Union{String,Int64},dsname::String,attr::Dict,ds_reader,ds_readerInRange,TG::TimeGrid,PhInfo::PhysicalInfo,mask::Dict)
     dstype = attr["dstype"] #signal/param/index/interval/feature
-    elT = attr["datatype"]
+    datatype = attr["datatype"]
+    # datatype = getDataType(baseIP,port,dsname)
     if dstype == "interval"
         if haskey(attr,"offsetdata")
             OD = attr["offsetdata"]
         else
             OD = nothing
         end
-        DS_obj = IntervalDataSet{elT}(OD, TG, dsname, (ds_reader, ds_readerInRange),InMemory_data{elT}(100))
+        DS_obj = IntervalDataSet{datatype}(OD, TG, dsname, datatype, (ds_reader, ds_readerInRange),InMemory_data{datatype}(100))
     elseif dstype == "feature"
-        DS_obj = FeatureDataSet{elT}(mask,dsname, (ds_reader, ds_readerInRange),InMemory_data{elT}(100))
+        DS_obj = FeatureDataSet{datatype}(mask,dsname, datatype, (ds_reader, ds_readerInRange),InMemory_data{datatype}(100))
     elseif dstype == "index"
-        DS_obj = IndexDataSet{elT}(TG,dsname, (ds_reader, ds_readerInRange),InMemory_data{elT}(100))
+        DS_obj = IndexDataSet{datatype}(TG, dsname, datatype, (ds_reader, ds_readerInRange),InMemory_data{datatype}(100))
     elseif dstype == "signal" || dstype == "param"
-        DS_obj = PhysicalDataSet{elT}(dstype,PhInfo,dsname, (ds_reader, ds_readerInRange),InMemory_data{elT}(100))
+        DS_obj = PhysicalDataSet{datatype}(dstype,PhInfo,dsname, datatype, (ds_reader, ds_readerInRange),InMemory_data{datatype}(100))
     end
     DS_obj
 end

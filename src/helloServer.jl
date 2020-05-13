@@ -118,6 +118,7 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
         DG = srv.obj["dataStorage"][datapath]
         from = parse(Int32,param["from"])
         to = parse(Int32,param["to"])
+
         if occursin("getData",regstr)
             data = getData(DG,from,to,param["fields"])
         elseif occursin("getStructData",regstr)

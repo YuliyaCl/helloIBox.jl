@@ -200,7 +200,7 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
     else
         iend = result.iend
     end
-    DG.result = StructArray((result.ibeg, iend, result.type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
+    DG.result = StructArray((convert.(DG.data[DG.ibegdata].datatype,result.ibeg), convert.(DG.data[DG.ienddata].datatype,iend), result.type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
 end
 
 #изменение типа сегментов, попавших в диапазон от-до
@@ -243,7 +243,7 @@ function changeType!(DG::SegmentDataGroup,from::Int64,to::Int64, mode::String,ty
         iend = iend - ibeg
     end
     #записываем новые сегменты
-    DG.result = StructArray((ibeg, iend, type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
+    DG.result = StructArray((convert.(DG.data[DG.ibegdata].datatype,ibeg), convert.(DG.data[DG.ibegdata].datatype,iend), type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
 end
 
 #обработка команды-правки пользователя
@@ -444,8 +444,8 @@ function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all"
             for key in dsTake
                 fi = findall(x-> x== Symbol(key), propertynames(allDS))
                 if !isempty(fi) #запрашеваемое поле найдено
-                    @info list[fi[1]]
-                    addData = list[fi[1]][ind]
+                    addData = convert.(DG.data[key].datatype,list[fi[1]][ind])
+                    # addData = list[fi[1]][ind]
                     push!(data,addData)
                 end
                 i+=1
