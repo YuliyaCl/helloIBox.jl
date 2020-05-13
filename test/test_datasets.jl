@@ -44,13 +44,13 @@ DS1, dsreader,dsreader2,TG,PI,Mask = ds_new(localIP,8888,"EcgChannals","Ecg",att
 @test DS1.data[1]("10","","2") == [-133, -144] && DS1.data[1]("10","12","") == [-133, -144]
 
 #IndexDataSet
-infoQPoint = findnode(tree, "QPoint")
+infoQPoint = helloIBox.findnode(tree, "QPoint")
 infoQPoint["attrs"]["datatype"] = eval(Symbol(infoQPoint["type"]))
 infoQPoint["attrs"]["Freq"] = Freq
 infoQPoint["attrs"]["TimeStart"] = TimeSt
 
-DSQ,dsreader,dsreader2,TG,PI,Mask = ds_new(localIP,8888,"QRS","QPoint",infoQPoint["attrs"])
-@test isa(DSQ, IndexDataSet) && DSQ.data[1]("0","","2")!=DSQ.data[2]("0","","2")
+DSQ = helloIBox.ds_new(localIP,8888,"QRS","QPoint",infoQPoint["attrs"])
+@test isa(DSQ, helloIBox.IndexDataSet) && DSQ.data[1]("0","","2")!=DSQ.data[2]("0","","2")
 @test DSQ.data[1]("1","","2") == [221, 403] && DSQ.data[2]("400","500","") == [403] #сейчас не пройдет
 
 #IntervalDataSet
