@@ -77,6 +77,7 @@ from-to/count в ЭЛЕМЕНТАХ МАССИВА
 
 #### ручные правки сегментов
 Сейчас доступно и протестировано только для QRS (добавить/удалить). Надо положить в body запроса  JSON-файл с содержанием:
+```
 {
     "chName": "QRS",
     "targetData": "/Mark/QRS/",
@@ -90,7 +91,9 @@ from-to/count в ЭЛЕМЕНТАХ МАССИВА
     },
     "fromto": [1, 150]
 }
+```
 Более подробно о правках тут: https://docs.google.com/document/d/1311ZdQOyz3U6YEF1_FFphtpP3f7o4t_DD-u-7KdMMG4/edit
+Сам текст запроса (+ JSON в боди):
 ```
 "http://$localIP:$port/api/manualChange?res=oxy115829.dat"
 ```
