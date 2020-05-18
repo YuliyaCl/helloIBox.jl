@@ -4,7 +4,9 @@
 0. Julia должна быть запущена с правами админа! Иначе IBox не поднимется 
 1. Сборка бокса лежит в директории: Y:\Yuly\IBox .Но надо сохранить где-то локально, иначе не запустится 
 2. dat - файл не загружен в репозиторий, поэтому в локальную копию его надо положить самостоятельно. Тесты написаны под oxy115829.dat 
-Всязть с сервера: X:\БазаСпиро
+Скопировать с сервера: X:\БазаСпиро\oxy115829.dat в директорию, на каторой запускается сервер
+3. Если не было ручных правок, то все запросы передаются в бокс без изменений. Если был ручные правки сегментов QRS, то запрос к ним (точнее, началу и ширине) направляется в создаваемый на сервере объект, который содержит измененные сегменты. Важно! Объект ищется по именни группы - если использовать имя QRS при создании правок, то все последующие запросы тоже должны содержать имя группы QRS, а не Mark/QRS или что-то еще.
+
 
 #### Установка
 В julia REPL:
@@ -21,24 +23,23 @@ using HTTP
 
 localIP =  Sockets.localhost
 port = 8080
-pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
+pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe" #здесь, конечно, надо свой адрес указать
 start_server(""; localIP = localIP, port = port) #стартуем сервер-посредник
 ```
 
-#### запустить бокс на файле
+#### запустить бокс на файле. используем тот же IP, но порт 8888
 ```
-"http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP" #запускаем бокс 
-```
-#### закрытие сервера
-```
-"http://$localIP:$port/api/closeServer"
+"http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP" #запускаем бокс
 ```
 
 #### закрытие бокса
 ```
 "http://$localIP:$port/api/Close"
 ```
-
+#### закрытие сервера
+```
+"http://$localIP:$port/api/closeServer"
+```
 #### получение тега (имени) данного 
 Многие данные записаны по неописательным именам (например, каналы ЭКГ: Ecg,Ecg_1 ... и тд).Чтобы получить тег данных (например, имя канала), используйте getDataTag
 ```
@@ -60,8 +61,8 @@ from-to/count в ЭЛЕМЕНТАХ МАССИВА
 #запрос частоты дискретизации:
 "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Freq&index=0&from=0&count=1
 
- #запрос 1-го отведения ЭКГ. Если нет индекса,он принимается =0
-"http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=EcgRecalc&from=0&count=20"
+ #запрос 1-го отведения ЭКГ. Чтобы запрасить 1-й канал, то надо указать index=0
+"http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=EcgRecalc&index=0&from=0&count=20"
 
  #запрос 2-го отведения ЭКГ, через нижнее подчеркивание можно задавать индекс для данных
 "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=EcgRecalc_1&from=0&count=20"
@@ -76,5 +77,25 @@ from-to/count в ЭЛЕМЕНТАХ МАССИВА
 "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20"
 ```
 
-#### комментарии
-Сейчас нет интерактива и в принципе моэжно пользоватсья боксом напрямую. Но потом он появится=)
+#### ручные правки сегментов
+Сейчас доступно и протестировано только для QRS (добавить/удалить). Надо положить в body запроса  JSON-файл с содержанием:
+```
+{
+    "chName": "QRS",
+    "targetData": "/Mark/QRS/",
+    "command": {
+        "id": "ADD_SEGMENT",
+        "args": {
+            "ibeg": [10, 30, 50],
+            "iend": [20, 45, 55],
+            "type": "QRS"
+        }
+    },
+    "fromto": [1, 150]
+}
+```
+Более подробно о правках тут: https://docs.google.com/document/d/1311ZdQOyz3U6YEF1_FFphtpP3f7o4t_DD-u-7KdMMG4/edit
+Сам текст запроса (+ JSON в боди):
+```
+"http://$localIP:$port/api/manualChange?res=oxy115829.dat"
+```
