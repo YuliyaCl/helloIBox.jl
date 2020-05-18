@@ -10,7 +10,7 @@ port = 8080
 pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
 @testset "Access to data through IBox" begin
 
-start_server(""; localIP = localIP, port = port)
+start_server("C:/Users/yzh/Downloads/TestServer"; localIP = localIP, port = port)
 r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 #ЗАПРОС ДАННЫХ
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Freq&index=0&from=0&count=1")

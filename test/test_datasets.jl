@@ -8,6 +8,7 @@ using Test
 localIP =  Sockets.localhost
 port = 8080
 pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
+# pathToIBox = "C:/Yuly/IBox/IBoxLauncher.exe"
 
 start_server(""; localIP = localIP, port = port)
 r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
@@ -15,11 +16,11 @@ r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
 tree = JSON.parse(String(r.body))[1]
 
 #поиск данных в дереве
-info1 = findnode(tree, "EcgRecalcChannals") #запрос группы
+info1 = helloIBox.findnode(tree, "EcgRecalcChannals") #запрос группы
 @test info1["name"]=="EcgRecalcChannals" && length(info1["nodes"])==12
-info2 = findnode(tree, "Noise_i_QRS") #запрос внутри группы более вложенное
+info2 = helloIBox.findnode(tree, "Noise_i_QRS") #запрос внутри группы более вложенное
 @test info2["name"]=="Noise_i_QRS" && length(info2["nodes"])==0
-info3 = findnode(tree, "Ecg_2")  #запрос внутри группы просто
+info3 = helloIBox.findnode(tree, "Ecg_2")  #запрос внутри группы просто
 @test info3["name"]=="Ecg_2" && info3["attrs"]["tag"] == "C1"
 
 Freq = helloIBox.getData(localIP,8888,"Freq")[1] #читаем общую частоту-пока так
@@ -63,7 +64,7 @@ DSW,dsreader,dsreader2,TG,PI,Mask = ds_new(localIP,8888,"QRS","WidthQRS",infoWid
 
 # 1. правок нет - просто сквозные запросы без декодирования и создания объектов
 # 2. пришла правка - делаем объект - вычитываем данные/декодируем/сводим/сохраняем - теперь всё чтение из сведенных результатов
-infoQRS = findnode(tree, "QRS") #запрос группы
+infoQRS = helloIBox.findnode(tree, "QRS") #запрос группы
 
 
 #данные в интервале

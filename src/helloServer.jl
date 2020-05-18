@@ -81,7 +81,7 @@ function runIBox(srv::ServerState, req::HTTP.Request)
 
     out = "Тут тип загрузился бокс"
 
-    args = `-config:IBTestWebApi -WebAPISrc[port=$port] -finalize -res:000`
+    args = `-config:IBTestWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
 
     command = `$IBox_path $filepath $args`
 
