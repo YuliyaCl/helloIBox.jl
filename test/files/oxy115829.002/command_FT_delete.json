@@ -1,0 +1,13 @@
+{
+    "chName": "QRS",
+    "targetData": "/Mark/QRS/",
+    "command": {
+        "id": "DELETE_SEGMENT",
+        "args": {
+            "ibeg": 10,
+            "iend": 100,
+            "type": "QRS"
+        }
+    },
+    "fromto": [1, 150]
+}

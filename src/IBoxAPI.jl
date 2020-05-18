@@ -27,6 +27,18 @@ function getData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
 end
 
 #запрос данных из в интервале как бы
+function getStructData(baseIP::IPv4,port::Union{String,Int64},dataName::String, fields::String,index="0",from="0",to="",count="")
+    param = Dict()
+    param["dataName"] = dataName
+    param["index"] = index
+    param["from"] = from
+    param["to"] = to
+    param["count"] = count
+    param["fields"] = fields
+
+    data = getStructData(baseIP, port, param)
+    return data
+end
 function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
 #baseURI = $localIP:$port
     strParams = []
@@ -36,7 +48,6 @@ function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
 
     strParams = join(strParams)
 
-
     if !haskey(param,"to") && !haskey(param,"count")
         strParams = strParams*"all&"
     end
@@ -45,10 +56,10 @@ function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
         strParams = strParams*"from=0&"
     end
 
-    # println("http://$baseIP:$port/api/getStructData?$strParams")
+    println("http://$baseIP:$port/api/getStructData?$strParams")
     res = HTTP.request("GET", "http://$baseIP:$port/api/getStructData?$strParams")
     data = res.body
-
+    # @info data
     fields = param["fields"]
     allFields = split(fields,",")
     alldataType = [] #собираем типы данных, чтобы работать с ними
@@ -56,12 +67,13 @@ function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
         push!(alldataType, getDataType(baseIP,port,string(f))) #узнаем тип данных
     end
 
-    # convertedData = reinterpret(dataType, base64decode(data)) |> collect
+    convertedData = reinterpret(alldataType[1], base64decode(data)) |> collect
     @info alldataType
-    return data
+    return convertedData
 end
 
 function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0,from=0,to=[],count=[])
+
     addToRequest = ""
     if isempty(to) && isempty(count) #если не было указано конца, то читаем всё
         addToRequest = "&all"
@@ -71,6 +83,9 @@ function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0
         end
         if ~isempty(count)
             addToRequest = addToRequest*"&count=$count"
+        end
+        if ~isempty(from)
+            addToRequest = addToRequest*"&from=$from"
         end
     end
     res = HTTP.request("GET", "http://$baseIP:$port/api/getData?dataName=$dataName&index=$index$addToRequest")
@@ -189,7 +204,7 @@ function getDataType(baseIP::IPv4,port::Union{String,Int64},dataName::String,ind
     elseif occursin("type: char",info)
         dataType = Int8
     elseif occursin("type: Time",info)
-        dataType = Time
+        dataType = DateTime
     elseif occursin("type: bin16",info)
         dataType = BitArray #но тут я не уверена
     elseif occursin("type: object",info)

@@ -14,6 +14,7 @@ using Base64
 using Dates
 localIP =  Sockets.localhost
 port = 8888
+r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=MB10003190819162842s.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 
 using JSON
 r = HTTP.request("GET", "http://$localIP:8888/api/getDataTree")
@@ -75,7 +76,7 @@ h5open("MB10003190819162842s.004/mark.h5", "w") do file
     # gq["typе"] = Type              # create a scalar dataset inside the group
     # attrs(gq["typе"])["dstype"] = "feature" # an attribute
 
-    gq["WidthQRS"] = Int32.(Wq)              # create a scalar dataset inside the group
+    gq["WidthQRS"] = Wq             # create a scalar dataset inside the group
     attrs(gq["WidthQRS"])["dstype"] = "interval" # an attribute
     attrs(gq["WidthQRS"])["offsetdata"] = "QPoint" # an attribute
 end
