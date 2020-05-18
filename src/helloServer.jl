@@ -233,6 +233,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     HTTP.@register(H5_ROUTER, "GET", "/api/getTag", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/manualChange", x->manualChange(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getFileInfo", x->redirectRequest(srv, x))
 
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))
