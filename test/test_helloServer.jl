@@ -8,6 +8,7 @@ using Test
 localIP =  Sockets.localhost
 port = 8080
 pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
+# pathToIBox = "Y:/Yuly/IBox/IBoxLauncher.exe"
 @testset "Access to data through IBox" begin
 
 start_server("C:/Users/yzh/Downloads/TestServer"; localIP = localIP, port = port)
@@ -30,7 +31,12 @@ QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
 tree = JSON.parse(String(r.body))
 @test tree[1]["nodes"][1]["nodes"][1]["name"] == "Ecg"
-r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg_2")
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=QPoint")
+@test String(r.body)=="Int32"
+
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg")
 @test String(r.body)=="C1"
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getAttributes?res=oxy115829.dat&dataName=/Mark/EcgChannals/Ecg&index=1")
