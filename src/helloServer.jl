@@ -21,6 +21,7 @@ using HTTP
     push!(res.headers, "Connection" => "keep-alive")
     push!(res.headers, "Access-Control-Allow-Origin" => "*")
     push!(res.headers, "Content-Type" => "text/html; charset=utf-8")
+    push!(res.headers, "Access-Control-Allow-Methods" => "POST, GET")
     res
 end
 
@@ -177,10 +178,12 @@ end
 function manualChange(srv::ServerState, req::HTTP.Request)
     #информация о добавляемом сегменте лежит в JSONe, он может передаваться вместе с данными о файле
     #пока файл подчитывается из папки
+    # println("я зашел")
+
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
     infoEvent = String(req.body)
-    println(infoEvent)
+    # println(infoEvent)
     #парсим команду
     port = srv.obj["IBox_port"]
     localIP = srv.obj["IBox_host"]
@@ -198,6 +201,7 @@ function manualChange(srv::ServerState, req::HTTP.Request)
 
     return res
 end
+
 
 """
 Запуск сервера (в асинхронном режиме):
@@ -234,7 +238,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     HTTP.@register(H5_ROUTER, "GET", "/api/getTag", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getType", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->redirectRequest(srv, x))
-    HTTP.@register(H5_ROUTER, "GET", "/api/manualChange", x->manualChange(srv, x))
+    HTTP.@register(H5_ROUTER, "POST", "/api/manualChange", x->manualChange(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getFileInfo", x->redirectRequest(srv, x))
 
 

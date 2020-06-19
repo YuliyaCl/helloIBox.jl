@@ -254,8 +254,8 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
     #разбор JSON-a
     #судя по докам, он умеет парсить только в словарь
     #на сервере уже разбирали файл-команду
+
     manualEvent = JSON.parse(command)
-    println(manualEvent)
     #пока считаем, что имя группы лежит в chName
     gp_name = manualEvent["chName"]
     comandID = manualEvent["command"]["id"] #определяем, какую команду делаем с сегментом
@@ -274,6 +274,7 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
         AllObj["dataStorage"][gp_name] = DG
         #тут можно использовать targetData
     end
+    # println(DG)
 
     # filePath = collect(splitpath(DG.filepath))
 

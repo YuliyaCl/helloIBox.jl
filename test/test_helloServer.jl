@@ -59,12 +59,13 @@ end
 start_server(""; localIP = localIP, port = port)
 r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 
-pathTOjson = joinpath(Base.@__DIR__, "files","oxy115829.002","command_FT.json")
-r = HTTP.request("GET", "http://$localIP:$port/api/manualChange?res=oxy115829.dat", ["Content-Type" => "application/json"], read(pathTOjson))
+pathTOjson = joinpath(Base.@__DIR__, "files","oxy115829.002","command_FT0.json")
+r = HTTP.request("POST", "http://$localIP:$port/api/manualChange?res=oxy115829.dat", ["Content-Type" => "application/json"], read(pathTOjson))
+
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=QRS&fields=QPoint&index=1&from=1&to=3")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [10, 30, 50]
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=150")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=20000")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [10, 30, 50, 101]
 r = HTTP.request("GET", "http://$localIP:$port/api/Close")
