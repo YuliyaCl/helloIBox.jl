@@ -255,7 +255,7 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
     #судя по докам, он умеет парсить только в словарь
     #на сервере уже разбирали файл-команду
     manualEvent = JSON.parse(command)
-
+    println(manualEvent)
     #пока считаем, что имя группы лежит в chName
     gp_name = manualEvent["chName"]
     comandID = manualEvent["command"]["id"] #определяем, какую команду делаем с сегментом

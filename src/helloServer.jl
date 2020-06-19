@@ -180,6 +180,7 @@ function manualChange(srv::ServerState, req::HTTP.Request)
     filename, filepath, datapath, param = parse_uri(req.target, srv)
 
     infoEvent = String(req.body)
+    println(infoEvent)
     #парсим команду
     port = srv.obj["IBox_port"]
     localIP = srv.obj["IBox_host"]
