@@ -10,6 +10,7 @@ export  start_server, getData, getTag, getDataTree,getChildsCount,
         getAttr, getStructData,
         dg_new
 
+include("io/pack.jl")
 include("helloServer.jl")
 include("IBoxAPI.jl")
 include("timeseries.jl")

@@ -85,7 +85,7 @@ function runIBox(srv::ServerState, req::HTTP.Request)
     args = `-config:IBTestWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
 
     command = `$IBox_path $filepath $args`
-
+    @show command
     @async run(command)
     out = "Бокс запущен..."
     srv.obj["IBox_port"] = port
@@ -127,8 +127,7 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
         end
 
         @info data
-        out = collect(zip(data...))
-        out = base64encode(out)
+        out = pack_vec(data) |> base64encode
         println("Объект имеется")
     else #объекта нет, значит читаем напрямую
         port = srv.obj["IBox_port"]
@@ -151,9 +150,9 @@ function getData(srv::ServerState, req::HTTP.Request)
 
     data = getData(localIP,port,param)
     if !isempty(data)
-        out = base64encode(collect(zip(data...)))
+        out = pack_vec(data) |> base64encode
     else
-        out = "null"
+        out = "null" # gvg: это стандартный вывод?
     end
 
     res = out |> HTTP.Response  |> addResponseHeader
@@ -191,13 +190,12 @@ function manualChange(srv::ServerState, req::HTTP.Request)
     segInRange = parseCommand(localIP, port, srv.obj,infoEvent)
 
     if isa(segInRange,StructArray)
-        data = collect(zip(segInRange))
-        out = base64encode(data)
+        out = pack_vec(segInRange) |> base64encode
     else
         out = "Command was parsed"
     end
 
-    res = out|> HTTP.Response |> addResponseHeader
+    res = out |> HTTP.Response |> addResponseHeader
 
     return res
 end

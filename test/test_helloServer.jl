@@ -5,13 +5,19 @@ using Base64
 using JSON
 using Test
 
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=/Mark/QRS&from=110684&to=110694&fields=QPoint,WidthQRS")
+QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+
+
 localIP =  Sockets.localhost
 port = 8080
-pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
+pathToIBox = "E:\\box_fail\\IBox\\IBoxLauncher.exe"
+# pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
 # pathToIBox = "Y:/Yuly/IBox/IBoxLauncher.exe"
 @testset "Access to data through IBox" begin
-
-start_server("C:/Users/yzh/Downloads/TestServer"; localIP = localIP, port = port)
+server_path = "E:/box_fail" # "C:/Users/yzh/Downloads/TestServer"
+start_server(server_path; localIP = localIP, port = port)
 r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 #ЗАПРОС ДАННЫХ
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dataName=Freq&index=0&from=0&count=1")
@@ -34,6 +40,10 @@ tree = JSON.parse(String(r.body))
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=QPoint")
 @test String(r.body)=="Int32"
+
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=/Mark/QRS&from=110684&to=110694&fields=QPoint,WidthQRS")
+helloIBox.unpack_vec(base64decode(r.body), Int32, Int16) == [(Int32(110629), Int16(24))]
 
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg")

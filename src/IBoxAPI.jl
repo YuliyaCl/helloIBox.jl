@@ -17,11 +17,11 @@ function getData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
     end
     # println("http://$baseIP:$port/apibox/getData?$strParams")
     res = HTTP.request("GET", "http://$baseIP:$port/api/getData?$strParams")
-    data = res.body
+    data = res.body |> base64decode
     index = param["index"]
 
     dataType = getDataType(baseIP,port,param["dataName"],param["index"]) #узнаем тип данных
-    convertedData = reinterpret(dataType, base64decode(data)) |> collect
+    convertedData = unpack_vec(data, dataType)
     # @info convertedData
     return convertedData
 end
@@ -58,16 +58,19 @@ function getStructData(baseIP::IPv4,port::Union{String,Int64},param::Dict)
 
     println("http://$baseIP:$port/api/getStructData?$strParams")
     res = HTTP.request("GET", "http://$baseIP:$port/api/getStructData?$strParams")
-    data = res.body
+    data = res.body |> base64decode
     # @info data
     fields = param["fields"]
-    allFields = split(fields,",")
-    alldataType = [] #собираем типы данных, чтобы работать с ними
-    for f in allFields
-        push!(alldataType, getDataType(baseIP,port,string(f))) #узнаем тип данных
+    allFields = (split(fields,",")...,)
+    #alldataType = [] #собираем типы данных, чтобы работать с ними gvg: ЗАБУДЬ об этом синтаксисе: []
+    alldataType = map(allFields) do f
+        getDataType(baseIP,port,string(f))
     end
+    # for f in allFields
+    #     push!(alldataType, getDataType(baseIP,port,string(f))) #узнаем тип данных
+    # end
 
-    convertedData = reinterpret(alldataType[1], base64decode(data)) |> collect
+    convertedData = unpack_vec(data, alldataType...)
     @info alldataType
     return convertedData
 end
@@ -89,10 +92,10 @@ function getData(baseIP::IPv4,port::Union{String,Int64},dataName::String,index=0
         end
     end
     res = HTTP.request("GET", "http://$baseIP:$port/api/getData?dataName=$dataName&index=$index$addToRequest")
-    data = res.body
+    data = res.body |> base64decode
 
     dataType = getDataType(baseIP,port,dataName, index) #узнаем тип данных
-    convertedData = reinterpret(dataType, base64decode(data)) |> collect
+    convertedData = unpack_vec(data, dataType)
     return convertedData
 end
 
@@ -206,9 +209,9 @@ function getDataType(baseIP::IPv4,port::Union{String,Int64},dataName::String,ind
     elseif occursin("type: Time",info)
         dataType = DateTime
     elseif occursin("type: bin16",info)
-        dataType = BitArray #но тут я не уверена
+        dataType = BitArray #но тут я не уверена gvg: Int16 ??
     elseif occursin("type: object",info)
-        dataType = []
+        dataType = [] # лучше сразу выдать ошибку
     else
         println("Неизвестный тип "*info)
     end
