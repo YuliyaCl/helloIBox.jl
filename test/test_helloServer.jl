@@ -6,17 +6,18 @@ using JSON
 using Test
 
 
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=/Mark/QRS&from=110684&to=110694&fields=QPoint,WidthQRS")
-QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+
 
 
 localIP =  Sockets.localhost
 port = 8080
 pathToIBox = "E:\\box_fail\\IBox\\IBoxLauncher.exe"
-# pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
-# pathToIBox = "Y:/Yuly/IBox/IBoxLauncher.exe"
+pathToIBox = "C:/Temp/IBox/IBoxLauncher.exe"
+# pathToIBox = "Y:\\Yuly\\IBox\\IBoxLauncher.exe"
 @testset "Access to data through IBox" begin
 server_path = "E:/box_fail" # "C:/Users/yzh/Downloads/TestServer"
+server_path = "C:/Users/yzh/Downloads/TestServer"
+
 start_server(server_path; localIP = localIP, port = port)
 r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP")
 #ЗАПРОС ДАННЫХ
@@ -28,25 +29,36 @@ r = HTTP.request("GET", "http://$localIP:$port/api/getData?res=oxy115829.dat&dat
 ecg1 = reinterpret(Int32, base64decode(r.body)) |> collect
 @test length(ecg1)==20 && ecg1[1]==3099 && ecg1[20]==3062
 
+# r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=/Mark/QRS&from=5847867&to=5852730&fields=QPoint,WidthQRS")
+
+
+
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=Ecg_1&from=10&to=15")
 ECG = reinterpret(Int32, base64decode(r.body)) |> collect
 @test ECG == [3110, 3102, 3072, 3038, 3041]
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=200&to=400")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=100&to=400")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
-@test QPoint == [221]
+@test QPoint == [101, 221]
+
 r = HTTP.request("GET", "http://$localIP:$port/api/getDataTree")
 tree = JSON.parse(String(r.body))
 @test tree[1]["nodes"][1]["nodes"][1]["name"] == "Ecg"
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=QPoint")
 @test String(r.body)=="Int32"
+r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=WidthQRS")
 
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=/Mark/QRS&from=110684&to=110694&fields=QPoint,WidthQRS")
 helloIBox.unpack_vec(base64decode(r.body), Int32, Int16) == [(Int32(110629), Int16(24))]
 
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=/Mark/QRS&from=100&to=300&fields=QPoint,WidthQRS")
+QPoint =helloIBox.unpack_vec(base64decode(r.body), Int32, Int16)
 
-r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=/Mark/QRS&from=100&to=300&fields=QPoint")
+QPoint =helloIBox.unpack_vec(base64decode(r.body), Int32)
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getTag?res=oxy115829.dat&dataName=Ecg&index=2")
 @test String(r.body)=="C1"
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getAttributes?res=oxy115829.dat&dataName=/Mark/EcgChannals/Ecg&index=1")
@@ -75,7 +87,10 @@ r = HTTP.request("POST", "http://$localIP:$port/api/manualChange?res=oxy115829.d
 r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=QRS&fields=QPoint&index=1&from=1&to=3")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [10, 30, 50]
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=100")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint,WidthQRS&from=1&to=300")
+QPoint =helloIBox.unpack_vec(base64decode(r.body), Int32, Int16)
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=300")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [10, 30, 50]
 

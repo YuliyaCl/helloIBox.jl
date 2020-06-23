@@ -12,7 +12,7 @@ helloIBox.addSeg!(DG,newSeg,"simpleAdd")
 
 
 
-DG = dg_new(localIP,8888,"QRS")
+DG = dg_new(localIP,8888,"/Mark/QRS")
 allObj = Dict{String,Any}()
 allObj["history"] = []
 allObj["state"] = 0

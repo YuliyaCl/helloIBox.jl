@@ -422,6 +422,7 @@ function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all"
     ind = Int32(from):Int32(to)
     data = DG.result
     allInRes = true
+    dsTake = split(dsTake,',')
     if dsTake != "all"
         if ~isa(dsTake,Vector)
             dsTake = [dsTake]

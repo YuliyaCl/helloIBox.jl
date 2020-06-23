@@ -115,7 +115,7 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
     regstr = req.target #само содержание запроса
     @info filename, filepath, datapath, param
     if haskey(srv.obj["dataStorage"],datapath) #был объект, значит были ручные правки - читаем из него
-        @info datapath
+
         DG = srv.obj["dataStorage"][datapath]
         from = parse(Int32,param["from"])
         to = parse(Int32,param["to"])
@@ -125,15 +125,20 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
         elseif occursin("getStructData",regstr)
             data = getStructData(DG,from,to,param["fields"])
         end
-
-        @info data
-        out = pack_vec(data) |> base64encode
+        t_data = (data...,)
+        println(t_data)
+        if !isempty(t_data)
+            out = pack_vec(t_data) |> base64encode
+        else
+            out = "null"
+        end
         println("Объект имеется")
     else #объекта нет, значит читаем напрямую
         port = srv.obj["IBox_port"]
         localIP = srv.obj["IBox_host"]
         println("http://$localIP:$port$regstr")
         r = HTTP.request("GET", "http://$localIP:$port$regstr")
+        # @info r
         out = r.body
     end
 
