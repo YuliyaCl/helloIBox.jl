@@ -12,7 +12,7 @@ helloIBox.addSeg!(DG,newSeg,"simpleAdd")
 
 
 
-DG = dg_new(localIP,8888,"/Mark/QRS")
+DG = dg_new(localIP,8888,"QRS")
 allObj = Dict{String,Any}()
 allObj["history"] = []
 allObj["state"] = 0
@@ -30,7 +30,7 @@ command_FT= String(read(command1Path))
 helloIBox.parseCommand(localIP, 8888, allObj,command_FT)
 @test allObj["dataStorage"]["QRS"].result.QPoint[1:2]==[10,50]
 @test allObj["dataStorage"]["QRS"].result.WidthQRS[1:2]==[35,5]
-
+ibeg =  DG.data[DG.ibegdata].data[1]("0","","")
 #удаление сегента
 command1Path = joinpath(Base.@__DIR__, "files","oxy115829.002","command_FT_delete.json")
 command_FT= String(read(command1Path))

@@ -70,6 +70,10 @@ r = HTTP.request("GET", "http://$localIP:$port/api/getAttributes?res=oxy115829.d
 attr = JSON.parse(String(r.body))
 @test attr["tag"] == "C1" && attr["dstype"] == "signal"
 
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=Ecg&index=1&from=100&to=1500")
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=Ecg&index=1&from=100&to=1500")
+
 r = HTTP.request("GET", "http://$localIP:$port/api/Close")
 
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
@@ -90,9 +94,13 @@ QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint,WidthQRS&from=1&to=300")
 QPoint =helloIBox.unpack_vec(base64decode(r.body), Int32, Int16)
 
-r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=300")
+r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=QRS&fields=QPoint&from=1&to=100")
 QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
 @test QPoint == [10, 30, 50]
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=Ecg_2&from=0&to=100")
+QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+
 
 r = HTTP.request("GET", "http://$localIP:$port/api/Close")
 

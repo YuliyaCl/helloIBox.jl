@@ -154,20 +154,20 @@ end
 #смотрим, исходные ширины это сегменты с началом-концом или шириной
 function getSegBegsType(DG::SegmentDataGroup)
     #!!!! исправить длину
-    ibeg =  DG.data[DG.ibegdata].data[1]("0","","100")
+    ibeg =  DG.data[DG.ibegdata].data[1]("0","","")
     iendDS = DG.data[DG.ienddata]
     typename = DG.typename
 
     isW = isa(iendDS, IntervalDataSet) #ширина ли это
     if isW
-        iend = ibeg + Int32.(iendDS.data[1]("0","","100"))
+        iend = ibeg + Int32.(iendDS.data[1]("0","",""))
     else
-        iend = iendDS.data[1]("0","","100")
+        iend = iendDS.data[1]("0","","")
     end
     if occursin(typename,"none") #none там, где нет данных типа
         type = ones(Int64,size(ibeg))
     else
-        type =DG.data[typename].data[1]("0","","100")
+        type =DG.data[typename].data[1]("0","","")
     end
 
     ibeg, iend, type, isW

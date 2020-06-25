@@ -117,16 +117,24 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
     if haskey(srv.obj["dataStorage"],datapath) #был объект, значит были ручные правки - читаем из него
 
         DG = srv.obj["dataStorage"][datapath]
-        from = parse(Int32,param["from"])
-        to = parse(Int32,param["to"])
-
+        if haskey(param,"from")
+            from = parse(Int32,param["from"])
+        end
+        if haskey(param,"to")
+            to = parse(Int32,param["to"])
+        end
+        
         if occursin("getData",regstr)
             data = getData(DG,from,to,param["fields"])
         elseif occursin("getStructData",regstr)
             data = getStructData(DG,from,to,param["fields"])
         end
-        t_data = (data...,)
-        println(t_data)
+        if isa(data,Array{Any})
+            t_data = (data...,)
+        else
+            t_data = data
+        end
+        println(data)
         if !isempty(t_data)
             out = pack_vec(t_data) |> base64encode
         else
