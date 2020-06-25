@@ -156,10 +156,13 @@ function getSegBegsType(DG::SegmentDataGroup)
     #!!!! исправить длину
     ibeg =  DG.data[DG.ibegdata].data[1]("0","","")
     iendDS = DG.data[DG.ienddata]
+    @info size(ibeg)
     typename = DG.typename
 
     isW = isa(iendDS, IntervalDataSet) #ширина ли это
     if isW
+        @info size(iendDS.data[1]("0","",""))
+
         iend = ibeg + Int32.(iendDS.data[1]("0","",""))
     else
         iend = iendDS.data[1]("0","","")
