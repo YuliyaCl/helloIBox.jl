@@ -307,15 +307,20 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
             ibeg = [ibeg]
             iend = [iend]
         end
-
+        println("Добавляем сегмент: ")
+        @info ibeg, iend
         newSeg = StructArray(ibeg = ibeg, iend = iend, type = type)
         #addSeg!(DG,newSeg,"rewrite",commandToString(manualEvent["command"]))
         addSeg!(DG,newSeg,mode)
 
     elseif comandID == "CHANGE_TYPE" || comandID == "DELETE_SEGMENT"
-        from = manualEvent["command"]["args"]["ibeg"]
-        to = manualEvent["command"]["args"]["iend"]
+        from = manualEvent["command"]["args"]["ibeg"][1]
+        to = manualEvent["command"]["args"]["iend"][1]
         newType = manualEvent["command"]["args"]["type"]
+        println("Удаляем/меняем тип сегмент: ")
+
+        @info from, to
+
         if comandID == "CHANGE_TYPE"
             mode = manualEvent["command"]["args"]["mode"]
         else
