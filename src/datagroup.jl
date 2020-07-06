@@ -97,6 +97,7 @@ function dg_new(baseIP::IPv4,port::Union{String,Int64},groupName::String)
                 featureName = "none"
                 loadDsNames = [ibegdata, ienddata]
             end
+
             mask = getMask(parseType(attr))
             if isempty(mask)
                 #если не было маски, то называем тип по имени датагруппы
@@ -156,7 +157,7 @@ function getSegBegsType(DG::SegmentDataGroup)
     #!!!! исправить длину
     ibeg =  DG.data[DG.ibegdata].data[1]("0","","")
     iendDS = DG.data[DG.ienddata]
-    @info size(ibeg)
+    # @info size(ibeg)
     typename = DG.typename
 
     isW = isa(iendDS, IntervalDataSet) #ширина ли это
@@ -182,6 +183,7 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
     if isempty(DG.result) || DG.UndoRedo.state==0 #&& (!haskey(URT.result["ibeg"]) || isempty(URT.result["ibeg"]))
         #если ничего не делалось над объектом, то читаем данные из источника
         ibeg, iend, type, isW = getSegBegsType(DG)
+        @info sizeof(ibeg), sizeof(iend), sizeof(type)
         oldSeg = StructArray(ibeg = ibeg, iend = iend, type = type)
     else
         #если были правки раньше
@@ -198,6 +200,7 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
         oldSeg = StructArray((list[1], iend, list[3]), names = (Symbol("ibeg"),Symbol("iend"),Symbol("type")))
     end
     result = add_seg(oldSeg,newSeg,mode)
+    # @info result
     if isW
         iend = result.iend - result.ibeg
     else
@@ -261,6 +264,7 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
     manualEvent = JSON.parse(command)
     #пока считаем, что имя группы лежит в chName
     gp_name = manualEvent["chName"]
+    # @info gp_name
     comandID = manualEvent["command"]["id"] #определяем, какую команду делаем с сегментом
     #в sessionID идентификатор события
     if haskey(manualEvent,"sessionID")
@@ -273,7 +277,7 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
         DG = AllObj["dataStorage"][gp_name]
     else
         DG = dg_new(baseIP,port,gp_name)
-        @info AllObj["dataStorage"]
+        # @info AllObj["dataStorage"]
         AllObj["dataStorage"][gp_name] = DG
         #тут можно использовать targetData
     end
@@ -282,7 +286,6 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
     # filePath = collect(splitpath(DG.filepath))
 
     #Это бы надо куда-то снаружи, но ладно. Мы ж независимы..
-
     filePath =  sessionID*"_history.json"
     historyPath = sessionID*"_history.json"
     # @info historyPath
@@ -308,7 +311,7 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
             iend = [iend]
         end
         println("Добавляем сегмент: ")
-        @info ibeg, iend
+        @info ibeg, iend, type
         newSeg = StructArray(ibeg = ibeg, iend = iend, type = type)
         #addSeg!(DG,newSeg,"rewrite",commandToString(manualEvent["command"]))
         addSeg!(DG,newSeg,mode)

@@ -108,6 +108,32 @@ r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 
 end
 
+@testset "Additional Info" begin
+portIBox = 8888
+start_server(""; localIP = localIP, port = port)
+r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=$portIBox&IBox_path=$pathToIBox&IBox_host=$localIP")
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=RRm&all")
+RRm = reinterpret(Int32, base64decode(r.body)) |> collect
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=ClassQRS&all")
+classQRS = reinterpret(Int32, base64decode(r.body)) |> collect
+unClasses = unique(classQRS[findall(classQRS.!=10)])
+
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=XKoef&all")
+XKoefWald = reinterpret(Int16, base64decode(r.body)) |> collect
+
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=SubClassQRS&all")
+subClass = reinterpret(Int8, base64decode(r.body)) |> collect
+unique(subClass)
+
+r = HTTP.request("GET", "http://$localIP:$port/api/Close")
+
+r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
+
+end
+
 #
 # r = HTTP.request("GET", "http://$localIP:8888/api/getStructData?from=100&to=300&dataName=/Mark/QRS&fields=QPoint,WidthQRS")
 # QPoint = reinterpret(Int32, base64decode(r.body)) |> collect

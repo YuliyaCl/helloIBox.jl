@@ -1,0 +1,12 @@
+{
+    "chName": "QRS",
+    "targetData": "/Mark/QRS/",
+    "command": {
+        "id": "ADD_SEGMENT",
+        "args": {
+            "ibeg": [10, 30, 50],
+            "iend": [20, 45, 55],
+            "type": "QRS"
+        }
+    }
+}

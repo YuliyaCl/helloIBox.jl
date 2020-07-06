@@ -81,8 +81,8 @@ function runIBox(srv::ServerState, req::HTTP.Request)
     port = param["IBox_port"]
 
     out = "Тут тип загрузился бокс"
-
-    args = `-config:IBTestWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
+    # args = `-config:IBTestWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
+    args = `-config:ConfigClsWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
 
     command = `$IBox_path $filepath $args`
     @show command
@@ -123,7 +123,7 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
         if haskey(param,"to")
             to = parse(Int32,param["to"])
         end
-        
+
         if occursin("getData",regstr)
             data = getData(DG,from,to,param["fields"])
         elseif occursin("getStructData",regstr)

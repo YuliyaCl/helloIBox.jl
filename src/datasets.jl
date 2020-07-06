@@ -166,6 +166,7 @@ function ds_new(baseIP::IPv4,port::Union{String,Int64},groupname::String,dsname:
     if isempty(TG)
         TG, PhInfo = parseAttr(attr)
     end
+    # @info d
     dstype = attr["dstype"] #signal/param/index/interval/feature
     if dstype == "feature"
         mask = getMask(parseType(attr))
@@ -197,6 +198,7 @@ function ds_new(baseIP::IPv4,port::Union{String,Int64},dsname::String,attr::Dict
     dstype = attr["dstype"] #signal/param/index/interval/feature
     datatype = attr["datatype"]
     # datatype = getDataType(baseIP,port,dsname)
+    # @info dstype
     if dstype == "interval"
         if haskey(attr,"offsetdata")
             OD = attr["offsetdata"]

@@ -30,7 +30,7 @@ attr = info3["attrs"]
 attr["Freq"] = Freq
 attr["TimeStart"] = TimeSt
 #собираем временную сетку и лсб
-TG, PhInfo = parseAttr(attr)
+TG, PhInfo = helloIBox.parseAttr(attr)
 @test TG.fs == 257 && PhInfo.lsb.lsb == 1.063
 
 #проверяем парсер масок
