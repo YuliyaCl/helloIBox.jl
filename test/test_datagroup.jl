@@ -4,7 +4,6 @@ DG = dg_new(localIP,8888,"QRS")
 DG.data["QPoint"].data[2]("0","500","500")
 Int32.(DG.data["WidthQRS"].data[1]("0","10",""))
 
-DG.data["ClassQRS"].data[2]("100","10000","10000")
 info1 = helloIBox.findnode(tree, "ClassQRS") #запрос группы
 mask =helloIBox.getMask(helloIBox.parseType(info1["attrs"]))
 

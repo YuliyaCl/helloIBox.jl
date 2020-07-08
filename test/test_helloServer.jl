@@ -46,7 +46,9 @@ tree = JSON.parse(String(r.body))
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=QPoint")
 @test String(r.body)=="Int32"
-r = HTTP.request("GET", "http://$localIP:$port/api/getType?dataName=WidthQRS")
+r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=Freq&index=0&all")
+Amp = reinterpret(Int32, base64decode(r.body)) |> collect
+
 
 
 r = HTTP.request("GET", "http://$localIP:$port/api/getStructData?dataName=/Mark/QRS&from=110684&to=110694&fields=QPoint,WidthQRS")
@@ -133,6 +135,9 @@ r = HTTP.request("GET", "http://$localIP:$port/api/Close")
 r = HTTP.request("GET", "http://$localIP:$port/api/closeServer")
 
 end
+
+
+r = HTTP.request("GET", "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP&config=IBOpen&resName=111&arg=-open")
 
 #
 # r = HTTP.request("GET", "http://$localIP:8888/api/getStructData?from=100&to=300&dataName=/Mark/QRS&fields=QPoint,WidthQRS")

@@ -80,9 +80,28 @@ function runIBox(srv::ServerState, req::HTTP.Request)
     IBox_path = param["IBox_path"]
     port = param["IBox_port"]
 
+    if haskey(param, "config") #какую конфигурацию бокса брать
+        conf = param["config"]
+    else
+        conf = "ConfigClsWebApi"
+    end
+    if haskey(param, "res") #в какую разметку писать или из какой читать
+        resName = param["resName"]
+    else
+        resName = "000"
+    end
+    if haskey(param, "arg") #если надо открыть, то пишем -open
+        arg = param["arg"]
+    else
+        arg = ""
+    end
+
     out = "Тут тип загрузился бокс"
     # args = `-config:IBTestWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
-    args = `-config:ConfigClsWebApi -WebAPISrc[port=$port|debug=true] -finalize -res:000`
+
+    args = `-config:$conf -WebAPISrc[port=$port|debug=true] -finalize -res:$resName $arg`
+
+    # args = `-config:IBOpen -WebAPISrc[port=$port|debug=true] -finalize -res:000 -open`
 
     command = `$IBox_path $filepath $args`
     @show command
