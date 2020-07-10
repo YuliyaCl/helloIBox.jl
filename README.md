@@ -31,6 +31,14 @@ start_server(""; localIP = localIP, port = port) #стартуем сервер-
 ```
 "http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP" #запускаем бокс
 ```
+У Бокса конфигурация по умолчанию с классификатором - ConfigClsWebApi, разметка 000. Однако, можно в параметрах задать иную конфигурацию/имя разметки, а также выбрать открытие разметки по ее имени. Для этого в запросе указываются параметры: config=ИмяКонфигурации; resName=Имя разметки; arg=Доп.Строка в консоль запуска. Например:
+```
+#запускаем бокс с конфигом БЕЗ классификатора и пишем в разметку 111
+"http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP&config=IBTestWebApi&resName=111" 
+
+#запуск "открыть бокс с разметкой 111", откроется уже имеющаяся разметка что бы там ни было - не надо ждать прогона
+"http://$localIP:$port/api/runIBox?res=oxy115829.dat&IBox_port=8888&IBox_path=$pathToIBox&IBox_host=$localIP&config=IBOpen&resName=111&arg=-open" 
+```
 
 #### закрытие бокса
 ```
