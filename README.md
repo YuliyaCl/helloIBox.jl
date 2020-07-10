@@ -59,6 +59,11 @@ start_server(""; localIP = localIP, port = port) #стартуем сервер-
 ```
  "http://$localIP:$port/api/getDataTree"
  ```
+ #### получение дерева данных QRS - классов
+Возвращает дерево в JSON-формате. В name содержится имя класс/подкласса, так же есть QPoint, попавшие в этот узел/лист, и кол-во элементов. Данные зачитываются из бокса, в обход правок (если таковые были)
+```
+ "http://$localIP:$port/api/getQRStree"
+ ```
 
 
 #### обращение к данным с помощью getData 
@@ -84,6 +89,12 @@ from-to/count в ЭЛЕМЕНТАХ МАССИВА
 #точки Q и ширина QRS в интервале с 100 по 120 (отсчеты исходного сигнала)
 "http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS&index=0&from=100&count=20"
 ```
+#### запрос данных о QRS комплексах - начало+ширина+класс+подкласс
+Просто выбираем 4 филда fields=QPoint,WidthQRS,ClassQRS,SubClassQRS. Предворительно их тип определяется по /api/getType
+```
+"http://$localIP:$port/api/getStructData?res=oxy115829.dat&dataName=QRS&fields=QPoint,WidthQRS,ClassQRS,SubClassQRS&from=1&to=300"
+```
+
 
 #### ручные правки сегментов
 Сейчас доступно и протестировано только для QRS (добавить/удалить). Надо положить в body запроса  JSON-файл с содержанием:
