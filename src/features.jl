@@ -67,3 +67,41 @@ function setbit(mask::Dict,types::Vector{T},bitName::Vector{String}) where T
     end
     return newTypes
 end
+
+#построение дерева классов на основе класса и подкласса, с сохранением данных индексации попавших в категорию элементов
+function buildQRStree(QPoint,Class, SubClass)
+
+    unCl = unique(Class)
+    QPoint = QPoint[1:length(Class)] #обрезаем по кол-ву классифицированных комплексов
+
+    unSubCl = unique(SubClass)
+
+    treeClasses = Dict{String,Any}()
+    treeClasses["nodes"] = []
+    treeClasses["name"] = "allClasses"
+    treeClasses["size"] = length(Class)
+
+    for i = 1:length(unCl)
+        isCl = Class.==unCl[i]
+        node =  Dict{String,Any}()
+        node["nodes"] = []
+        node["name"] = unCl[i]
+        node["size"] = sum(isCl)
+        node["QPoint"] = QPoint[isCl]
+        for j = 1:length(unSubCl) #теперь добавляем подклассы
+            isSubCl= (SubClass.== unSubCl[j]) .& isCl
+
+            subnode =  Dict{String,Any}()
+            subnode["nodes"] = []
+            subnode["name"] = unSubCl[j]
+            subnode["size"] = sum(isSubCl)
+            subnode["QPoint"] = QPoint[isSubCl]
+            push!(node["nodes"],subnode)
+        end
+        push!(treeClasses["nodes"],node)
+    end
+
+
+    result = JSON.json(treeClasses)
+    return result
+end

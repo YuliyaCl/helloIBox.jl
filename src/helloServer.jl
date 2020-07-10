@@ -232,6 +232,33 @@ function manualChange(srv::ServerState, req::HTTP.Request)
     return res
 end
 
+"""
+получение дерева классов QRS-комплекса в json-формате
+работает ТОЛЬКО С ИСХОДНЫМИ ДАННЫМИ БОКСА - правки не подтягивает
+"""
+function getQRStree(srv::ServerState, req::HTTP.Request)
+
+    filename, filepath, datapath, param = parse_uri(req.target, srv)
+
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+
+    #запрашиваем из Бокса данные для дерева
+    r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=QPoint&all")
+    QPoint = reinterpret(Int32, base64decode(r.body)) |> collect
+
+    r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=ClassQRS&all")
+    Class = reinterpret(Int32, base64decode(r.body)) |> collect
+
+    r = HTTP.request("GET", "http://$localIP:$port/api/getData?dataName=SubClassQRS&all")
+    SubClass = reinterpret(Int16, base64decode(r.body)) |> collect
+
+    #строим дерево
+    result = buildQRStree(QPoint, Class, SubClass)
+
+    res = result |> HTTP.Response |> addResponseHeader
+
+end
 
 """
 Запуск сервера (в асинхронном режиме):
@@ -270,6 +297,7 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "POST", "/api/manualChange", x->manualChange(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getFileInfo", x->redirectRequest(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/getQRStree", x->getQRStree(srv, x))
 
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))
