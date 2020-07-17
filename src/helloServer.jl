@@ -85,7 +85,7 @@ function runIBox(srv::ServerState, req::HTTP.Request)
     else
         conf = "ConfigClsWebApi"
     end
-    if haskey(param, "res") #в какую разметку писать или из какой читать
+    if haskey(param, "resName") #в какую разметку писать или из какой читать
         resName = param["resName"]
     else
         resName = "000"
@@ -154,7 +154,7 @@ function redirectRequest(srv::ServerState, req::HTTP.Request)
             t_data = data
         end
         println(data)
-        if !isempty(t_data)
+        if !isempty(data)
             out = pack_vec(t_data) |> base64encode
         else
             out = "null"
@@ -260,6 +260,33 @@ function getQRStree(srv::ServerState, req::HTTP.Request)
 
 end
 
+function undo!(srv::ServerState, req::HTTP.Request)
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+
+    undo!(srv.obj,localIP, port)
+    @info srv.obj["history"]
+    @info srv.obj["state"]
+    out = "State "*string(srv.obj["state"])
+    res = out|> HTTP.Response |> addResponseHeader
+
+    return res
+end
+
+function redo!(srv::ServerState, req::HTTP.Request)
+    port = srv.obj["IBox_port"]
+    localIP = srv.obj["IBox_host"]
+
+    redo!(srv.obj,localIP, port)
+
+    out = "State "*string(srv.obj["state"])
+    res = out|> HTTP.Response |> addResponseHeader
+
+    return res
+end
+
+
+
 """
 Запуск сервера (в асинхронном режиме):
 
@@ -298,6 +325,8 @@ function start_server(dir::AbstractString; localIP = Sockets.getipaddr(), port =
     HTTP.@register(H5_ROUTER, "POST", "/api/manualChange", x->manualChange(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getFileInfo", x->redirectRequest(srv, x))
     HTTP.@register(H5_ROUTER, "GET", "/api/getQRStree", x->getQRStree(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/undo", x->undo!(srv, x))
+    HTTP.@register(H5_ROUTER, "GET", "/api/redo", x->redo!(srv, x))
 
 
     # HTTP.@register(H5_ROUTER, "GET", "/api/getAttributes", x->getAttributes(srv, x))

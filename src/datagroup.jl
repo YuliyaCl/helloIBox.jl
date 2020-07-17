@@ -68,6 +68,7 @@ function dg_new(baseIP::IPv4,port::Union{String,Int64},groupName::String)
     r = HTTP.request("GET", "http://$baseIP:$port/api/getDataTree")
     tree = JSON.parse(String(r.body))[1]
     node =  findnode(tree, groupName) #запрос группы
+
     attr = node["attrs"]
 
     #пока берем так. но надо бы из группы данных
@@ -154,7 +155,7 @@ end
 
 #смотрим, исходные ширины это сегменты с началом-концом или шириной
 function getSegBegsType(DG::SegmentDataGroup)
-    #!!!! исправить длину
+
     ibeg =  DG.data[DG.ibegdata].data[1]("0","","")
     iendDS = DG.data[DG.ienddata]
     # @info size(ibeg)
@@ -162,8 +163,6 @@ function getSegBegsType(DG::SegmentDataGroup)
 
     isW = isa(iendDS, IntervalDataSet) #ширина ли это
     if isW
-        @info size(iendDS.data[1]("0","",""))
-
         iend = ibeg + Int32.(iendDS.data[1]("0","",""))
     else
         iend = iendDS.data[1]("0","","")
@@ -179,7 +178,6 @@ end
 #добавление нового сегмента
 #command тут не обрабатывается, только пишется в историю правок датагруппы
 function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
-
     if isempty(DG.result) || DG.UndoRedo.state==0 #&& (!haskey(URT.result["ibeg"]) || isempty(URT.result["ibeg"]))
         #если ничего не делалось над объектом, то читаем данные из источника
         ibeg, iend, type, isW = getSegBegsType(DG)
@@ -191,6 +189,7 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
         isW = isa(iendDS, IntervalDataSet) #ширина ли это
 
         resultOld = DG.result
+
         list = getfield(resultOld, :fieldarrays) #тк в резалте другие имена, пересобираем в стандартные
         if isW
             iend = list[1] + list[2]
@@ -206,7 +205,9 @@ function addSeg!(DG::SegmentDataGroup,newSeg::StructArray, mode::String)
     else
         iend = result.iend
     end
+    println("пишем резаль")
     DG.result = StructArray((convert.(DG.data[DG.ibegdata].datatype,result.ibeg), convert.(DG.data[DG.ienddata].datatype,iend), result.type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
+    # @info DG.result
 end
 
 #изменение типа сегментов, попавших в диапазон от-до
@@ -252,6 +253,33 @@ function changeType!(DG::SegmentDataGroup,from::Int64,to::Int64, mode::String,ty
     DG.result = StructArray((convert.(DG.data[DG.ibegdata].datatype,ibeg), convert.(DG.data[DG.ibegdata].datatype,iend), type), names = (Symbol(DG.ibegdata),Symbol(DG.ienddata),Symbol(DG.typename)))
 end
 
+function parseCommand(baseIP::IPv4,port::Union{String,Int64},DG::DataGroup,command::Vector{String},flUR = 0)
+    #можно подавать команды в векторе - будут применены последовательно
+    for com in command
+        parseCommand(baseIP, port, DG,com,flUR)
+    end
+end
+function parseCommand(baseIP::IPv4,port::Union{String,Int64},AllObj::Dict,command::Vector{String},flUR = 0)
+    #можно подавать команды в векторе - будут применены последовательно
+    for com in command
+        parseCommand(baseIP, port, AllObj,com,flUR)
+    end
+end
+
+function parseCommand(baseIP::IPv4,port::Union{String,Int64},DG::DataGroup,command::String,flUR = 0)
+    #проверяем, над этой ли датагруппой команда
+    manualEvent = JSON.parse(command)
+    #определяем имя данных
+    gp_name = manualEvent["chName"]
+    tempDict = Dict{String,Any}()
+    tempDict["history"] = []
+    tempDict["state"] = 0
+    tempDict["dataStorage"] = Dict{String,Any}()
+    tempDict["dataStorage"][gp_name] = DG
+
+    parseCommand(baseIP, port, tempDict,command,flUR)
+end
+
 #обработка команды-правки пользователя
 #AllObj - набор датагрупп в памяти
 #command - прочитанный в String JSON-file
@@ -260,7 +288,6 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
     #разбор JSON-a
     #судя по докам, он умеет парсить только в словарь
     #на сервере уже разбирали файл-команду
-
     manualEvent = JSON.parse(command)
     #пока считаем, что имя группы лежит в chName
     gp_name = manualEvent["chName"]
@@ -378,7 +405,8 @@ function parseCommand(baseIP::IPv4,port::Union{String,Int64}, AllObj::Dict,comma
 end
 
 function findSegDS(DG::SegmentDataGroup,from::Union{Int32,Int64},to::Union{Int32,Int64},features="")
-    if !isempty(DG.result)
+
+    if !isempty(DG.result) && DG.UndoRedo.state>0
         iendDS =  DG.data[DG.ienddata]
         isW = isa(iendDS, IntervalDataSet) #ширина ли это
 
@@ -395,13 +423,14 @@ function findSegDS(DG::SegmentDataGroup,from::Union{Int32,Int64},to::Union{Int32
         segs = DG.result
     else
         ibeg, iend, type, isW = getSegBegsType(DG)
-        if iW
+        if isW
             iendW = iend - ibeg
         else
             iendW = iend
         end
         segs = StructArray(ibeg = ibeg,iend = iendW,type = type)
     end
+
     return segs,ibeg,iend
 end
 #запрос сегментов в диапазоне - нужно для отправки клиенту для отрисовки
@@ -410,7 +439,6 @@ function getSegInRange(DG::SegmentDataGroup,from::Int64,to::Int64,features="")
 
     segs,ibeg,iend = findSegDS(DG,from,to)
     range = searchinrange(ibeg,iend,from,to)
-
     SIR = segs[range]
     """
     добавить фильтр по типам из features
@@ -421,18 +449,18 @@ end
 
 function getStructData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all")
     if isa(DG,SegmentDataGroup)
-        if !isempty(DG.result)
-            segs,ibeg,iend = findSegDS(DG,from,to)
-            range = searchinrange(ibeg,iend,from,to)
-            data = getData(DG,range.start,range.stop,dsTake)
-        end
+        segs,ibeg,iend = findSegDS(DG,from,to)
+        range = searchinrange(ibeg,iend,from,to)
+        data = getData(DG,range.start,range.stop,dsTake)
+
+        return data
     end
 end
 #запрос данных из датагрупп
 function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all")
     ind = Int32(from):Int32(to)
-    data = DG.result
     allInRes = true
+    data = Vector{Any}()
     dsTake = split(dsTake,',')
     if dsTake != "all"
         if ~isa(dsTake,Vector)
@@ -443,9 +471,9 @@ function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all"
             allInRes = allInRes && any(Symbol(dsT).==propertynames(DG.result)) && dsT!="original"
         end
     end
-    if DG.UndoRedo.state>0 && !isempty(DG.result) && allInRes
+    if !isempty(DG.result) && allInRes
         allDS = DG.result
-        data = Vector{Any}()
+
         list = getfield(allDS, :fieldarrays)
         if dsTake=="all"
             for i = 1:length(propertynames(allDS))
@@ -469,11 +497,67 @@ function getData(DG::Union{SegmentDataGroup,EventDataGroup},from,to,dsTake="all"
         end
         return data
     else
-        println("Даные были изменены, пока доступа к ним нет")
-        return []
+        ##ДОБАВИТЬ ЧТЕНИЕ ДАННЫХ ИЗ ИСХОДНИКА
+        if dsTake=="all"
+            for key in keys(DG.data)
+                addData = DG.data[key].data[1](string(from),srting(to),"")
+                push!(data,addData)
+            end
+        else
+            i=1
+            for key in dsTake
+                if haskey(DG.data, key)
+                    addData = DG.data[key].data[1](string(from),string(to+1),"")
+                    push!(data,addData)
+                end
+                i+=1
+            end
+        end
+
+        return data
+
         # allDS = DG.data.data
         # DSs = [[DG.data.data[i].data] for i = 1:length(DG.data)]
         # allDS = StructArray((DSs...,), names = (Symbol.(DG.data.name)...,))
     end
 
+end
+
+
+
+#отмена для датагруппы
+function undo!(DG::DataGroup,baseIP::IPv4,port::Union{String,Int64},)
+    #уперлись в левый край - ничего не делаем
+    if DG.UndoRedo.state == 0
+        return DG
+    end
+    #понижаем статус
+    DG.UndoRedo.state -= 1
+    #очищаем результаты
+    DG.result = []
+    if DG.UndoRedo.state != 1 && DG.UndoRedo.state != 0
+        #повторяем все команды до стейта с флагом "undo-redo"
+        for command in DG.UndoRedo.history[1:DG.UndoRedo.state-1]
+            parseCommand(baseIP, port, DG,command,-2)
+        end
+        #только последнюю отдельно, чтобы удалить не забыть строчку в файле правок
+        parseCommand(baseIP, port, DG,DG.UndoRedo.history[DG.UndoRedo.state],-1)
+    elseif DG.UndoRedo.state == 1
+        parseCommand(baseIP, port, DG, DG.UndoRedo.history[DG.UndoRedo.state],-1)
+    end
+    return DG
+end
+
+#возврат для датагруппы
+function redo!(DG::DataGroup,baseIP::IPv4,port::Union{String,Int64})
+    #уперлись в правый край - ничего не делаем
+    if DG.UndoRedo.state == size(DG.UndoRedo.history,1)
+        return DG
+    end
+    #повышаем статус
+    DG.UndoRedo.state += 1
+    #повторяем команду этого стейта
+    command = DG.UndoRedo.history[DG.UndoRedo.state]
+    parseCommand(baseIP, port, DG,command,1)
+    return DG
 end
